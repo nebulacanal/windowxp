@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>7979</title>
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+
+<div class="xp-screen hidden" id="xp-screen">
+  <div class="xp-topbar"></div>
+
+  <div class="xp-main">
+    <div class="xp-glow"></div>
+    <div class="xp-content">
+      <div class="xp-left">
+        <div class="logo-mark">
+          <svg class="flag-icon" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="flagShine" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#fff" stop-opacity="0.55" />
+                <stop offset="45%" stop-color="#fff" stop-opacity="0.08" />
+                <stop offset="100%" stop-color="#000" stop-opacity="0.12" />
+              </linearGradient>
+              <clipPath id="flagClip">
+                <path d="M2 11 C 9 5 18 5 24 8 C 30 12 39 9 46 11 L46 37 C 39 40 30 36 24 40 C 18 44 9 43 2 37 Z" />
+              </clipPath>
+            </defs>
+            <g clip-path="url(#flagClip)">
+              <rect x="0" y="0" width="24" height="24" fill="#F4A93C" />
+              <rect x="24" y="0" width="24" height="24" fill="#7CC576" />
+              <rect x="0" y="24" width="24" height="24" fill="#5AA7E8" />
+              <rect x="24" y="24" width="24" height="24" fill="#E86A6A" />
+              <rect x="0" y="0" width="48" height="48" fill="url(#flagShine)" />
+            </g>
+          </svg>
+          <div>
+            <div class="logo-word">7979</div>
+            <div class="logo-sub">online community</div>
+          </div>
+        </div>
+        <p class="xp-tagline">시작하려면 계정을 선택하세요</p>
+      </div>
+
+      <div class="xp-divider"></div>
+
+      <div class="xp-right">
+        <!-- 로그인 타일 -->
+        <div class="account-tile active" id="tile-login">
+          <div class="tile-highlight" id="login-highlight"></div>
+          <div class="avatar">
+            <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8.5" r="3.7" fill="#8A5A00"/><path d="M4.5 20c0-4.2 3.4-6.8 7.5-6.8s7.5 2.6 7.5 6.8" stroke="#8A5A00" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <div class="tile-body">
+            <div class="tile-title">로그인</div>
+            <div class="tile-sub">닉네임과 비밀번호를 입력하세요</div>
+            <form class="expand-panel panel-open" id="login-panel">
+              <div class="xp-field-row">
+                <input type="text" class="xp-input" placeholder="닉네임" id="login-nickname" autocomplete="username" />
+                <span class="xp-field-spacer"></span>
+              </div>
+              <p class="xp-error hidden" id="login-error"></p>
+              <div class="xp-field-row">
+                <input type="password" class="xp-input" placeholder="비밀번호" id="login-password" autocomplete="current-password" />
+                <button type="submit" class="xp-arrow-btn">➜</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- 회원가입 타일 -->
+        <div class="account-tile" id="tile-signup">
+          <div class="tile-highlight" id="signup-highlight"></div>
+          <div class="avatar signup-avatar">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="#1F6B3A" stroke-width="2.6" stroke-linecap="round"/></svg>
+          </div>
+          <div class="tile-body">
+            <div class="tile-title">새 계정 만들기</div>
+            <div class="tile-sub" id="signup-sub">클릭해서 가입 신청하기</div>
+            <form class="expand-panel" id="signup-panel">
+              <div class="xp-field-row">
+                <input type="text" class="xp-input" placeholder="밴드 닉네임" id="signup-nickname" autocomplete="username" />
+                <span class="xp-field-spacer"></span>
+              </div>
+              <div class="pref-row">
+                <label class="pref-option"><input type="radio" name="pref" value="top" /><span>탑</span></label>
+                <label class="pref-option"><input type="radio" name="pref" value="bottom" /><span>바텀</span></label>
+                <span class="xp-field-spacer"></span>
+              </div>
+              <div class="xp-field-row">
+                <input type="password" class="xp-input" placeholder="비밀번호(4 자 이상)" id="signup-password" autocomplete="new-password" />
+                <span class="xp-field-spacer"></span>
+              </div>
+              <p class="xp-error hidden" id="signup-error"></p>
+              <p class="xp-notice hidden" id="signup-notice"></p>
+              <div class="xp-field-row">
+                <input type="password" class="xp-input" placeholder="비밀번호 확인" id="signup-confirm" autocomplete="new-password" />
+                <button type="submit" class="xp-arrow-btn">➜</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="xp-bottombar">
+    <div class="bottombar-left">
+      <svg class="power-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="powerBall" cx="35%" cy="30%" r="75%">
+            <stop offset="0%" stop-color="#FF8A75" />
+            <stop offset="45%" stop-color="#E8503B" />
+            <stop offset="100%" stop-color="#9E2A1C" />
+          </radialGradient>
+          <linearGradient id="powerShine" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#fff" stop-opacity="0.75" />
+            <stop offset="60%" stop-color="#fff" stop-opacity="0" />
+          </linearGradient>
+        </defs>
+        <rect x="1" y="1" width="22" height="22" rx="5" fill="url(#powerBall)" stroke="rgba(255,255,255,0.7)" stroke-width="1.2" />
+        <rect x="2.5" y="2.5" width="19" height="19" rx="4" fill="none" stroke="#6E1D12" stroke-width="1" />
+        <rect x="1" y="1" width="22" height="22" rx="5" fill="url(#powerShine)" />
+        <path d="M12 6.5 V11.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" />
+        <path d="M8.2 8.2 A6 6 0 1 0 15.8 8.2" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" />
+      </svg>
+      종료
+    </div>
+    <div class="bottombar-right"></div>
+  </div>
+</div>
+
+<div class="xp-screen hidden" id="app-screen">
+  <div class="xp-topbar"></div>
+  <div class="xp-main">
+    <div class="xp-glow"></div>
+    <div class="app-panel">
+      <div class="app-panel-header">
+        <span id="welcome-nickname"></span>님, 환영해요
+        <a href="/admin.html" id="admin-link" class="hidden">관리자 페이지</a>
+      </div>
+      <p class="placeholder-note">
+        로그인 완료! 다음 단계에서 게시판, 채팅, 공지, 투표 기능이 이 자리에 채워질 예정이에요.
+      </p>
+      <button type="button" id="logout-btn" class="xp-logout-btn">로그아웃</button>
+    </div>
+  </div>
+  <div class="xp-bottombar">
+    <div class="bottombar-left"></div>
+    <div class="bottombar-right"></div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>
+
