@@ -1,10 +1,25 @@
 :root {
-  --font: Tahoma, Verdana, 'Malgun Gothic', sans-serif;
+  --font: 'Dotum', Tahoma, Verdana, 'Malgun Gothic', sans-serif;
   --topbar-color: #00309C;
   --main-blue: #5A7EDC;
   --main-blue-bright: #8DACED;
   --bottombar-color: #2332A7;
   --tile-color: 23, 62, 191; /* #173EBF, rgb 채널만 */
+
+  /* 데스크톱(메인 메뉴) 화면 전용 */
+  --taskbar-color: #2A59DD;
+  --taskbar-dark: #2561C3;
+  --taskbar-bright: #2165E2;
+  --taskbar-shine: #4787C7;
+  --start-dark: #3B9742;
+  --start-bright: #43A744;
+  --start-shine: #77BD7F;
+  --win-blue-1: #173EBF;
+  --win-blue-2: #5A7EDC;
+  --win-body-main: #1352B3;
+  --win-body-bright: #1C56C1;
+  --tray-main: #108CE6;
+  --tray-bright: #38A4E5;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; font-family: var(--font); }
@@ -173,3 +188,137 @@ html, body { margin: 0; height: 100%; font-family: var(--font); }
   color: #fff; padding: 0.5rem 1.1rem; font-family: var(--font); font-size: 13px; cursor: pointer;
 }
 .xp-logout-btn:hover { background: rgba(255,255,255,0.22); }
+
+/* ============ 로그인 후 메인 데스크톱 화면 ============ */
+.desktop {
+  position: fixed; inset: 0; overflow: hidden;
+  background-image: url('/images/background.jpg');
+  background-size: cover;
+  background-position: center 70%;
+  background-color: var(--main-blue); /* 이미지가 없을 때를 대비한 기본 배경 */
+}
+
+.window-cluster {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  display: flex; align-items: flex-start; gap: 14px; z-index: 3;
+  max-width: 95vw; max-height: 92vh;
+}
+.window-side-menu {
+  display: flex; flex-direction: column; gap: 13px; padding-top: 10px; flex-shrink: 0;
+}
+.window-side-menu .desktop-icon { width: 84px; }
+
+.desktop-icon {
+  width: 90px; padding: 6px 4px; border-radius: 4px; text-align: center; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: none; border: none;
+}
+.desktop-icon:hover, .desktop-icon:focus { background: rgba(255,255,255,0.2); outline: 1px dashed rgba(255,255,255,0.7); }
+.desktop-icon.active { background: rgba(255,255,255,0.28); outline: 1px solid rgba(255,255,255,0.6); }
+.icon-glyph {
+  width: 40px; height: 40px; display: block;
+  filter: drop-shadow(1px 2px 2px rgba(0,0,0,0.45));
+}
+.icon-label {
+  color: #fff; font-size: 12px; line-height: 1.3; text-shadow: 1px 1px 2px rgba(0,0,0,0.85);
+  word-break: keep-all;
+}
+
+.main-window {
+  width: min(800px, 92vw); height: min(750px, 80vh);
+  border-radius: 6px; overflow: hidden;
+  box-shadow: 3px 6px 18px rgba(0,0,0,0.35);
+  display: flex; flex-direction: column;
+}
+
+@media (max-width: 900px) {
+  .window-cluster { flex-direction: column; align-items: center; }
+  .window-side-menu {
+    flex-direction: row; flex-wrap: wrap; justify-content: center;
+    padding-top: 0; gap: 6px; max-width: 92vw;
+  }
+  .window-side-menu .desktop-icon { width: 68px; }
+  .main-window { width: 92vw; height: min(700px, 74vh); }
+}
+
+.win-titlebar {
+  height: 30px; flex-shrink: 0; display: flex; align-items: center; padding: 0 4px 0 8px; gap: 8px;
+  background: linear-gradient(90deg, var(--win-blue-1) 0%, var(--win-blue-2) 100%);
+  border: 1px solid #0E2C8A; border-bottom: none;
+}
+.win-titlebar .title-icon { width: 16px; height: 16px; flex-shrink: 0; }
+.win-titlebar .title-text { color: #fff; font-size: 13px; font-weight: 700; flex: 1; text-shadow: 1px 1px 1px rgba(0,0,0,0.3); }
+.win-controls { display: flex; gap: 3px; }
+.win-btn {
+  width: 21px; height: 20px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.25);
+  display: flex; align-items: center; justify-content: center; font-size: 11px; color: #fff; cursor: pointer;
+}
+.win-btn.min { background: linear-gradient(180deg, #4F86E0, #2C5FC0); }
+.win-btn.max { background: linear-gradient(180deg, #4F86E0, #2C5FC0); }
+.win-btn.close { background: linear-gradient(180deg, #E8685A, #C23A2C); }
+
+.win-body {
+  flex: 1; min-height: 0; overflow-y: auto;
+  background: #ECF1FB; border: 1px solid #0E2C8A; border-top: none;
+  padding: 1.6rem 1.8rem;
+}
+.win-welcome { text-align: center; color: #16327A; margin-top: 2rem; }
+.win-welcome .nick { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.win-welcome .desc { font-size: 12.5px; color: #4C5F91; line-height: 1.7; }
+.win-welcome .admin-link { display: inline-block; margin-top: 1rem; font-size: 12px; color: #173EBF; }
+
+.taskbar {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 40px; z-index: 4;
+  background: linear-gradient(180deg, var(--taskbar-shine) 0%, var(--taskbar-color) 30%, var(--taskbar-bright) 60%, var(--taskbar-dark) 100%);
+  border-top: 1px solid rgba(255,255,255,0.4);
+  display: flex; align-items: stretch; padding: 0; gap: 0;
+}
+.start-btn {
+  position: relative; overflow: hidden;
+  height: 100%; padding: 0 20px 0 12px; border-radius: 0 3px 3px 0; border: none;
+  background: linear-gradient(180deg, var(--start-shine) 0%, var(--start-bright) 45%, var(--start-dark) 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 1px 0 3px rgba(0,0,0,0.35);
+  color: #fff; font-weight: 700; font-size: 13px; font-style: italic;
+  display: flex; align-items: center; gap: 6px; cursor: pointer;
+}
+.start-btn::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 55%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 100%);
+  border-radius: 0;
+  pointer-events: none;
+}
+.start-btn svg { width: 18px; height: 18px; position: relative; z-index: 1; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3)); }
+.start-btn span { position: relative; z-index: 1; }
+.taskbar-sep { width: 1px; align-self: stretch; margin: 6px 0; background: rgba(255,255,255,0.25); }
+.taskbar-tasks { flex: 1; display: flex; align-items: center; padding: 0 8px; }
+.task-chip {
+  height: 28px; padding: 0 26px; border-radius: 3px;
+  background: linear-gradient(180deg, var(--win-body-bright) 0%, var(--win-body-main) 100%);
+  border: none; color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px;
+  cursor: pointer;
+}
+.task-chip svg { width: 14px; height: 14px; }
+.tray {
+  margin-left: auto; height: 100%; padding: 0 18px 0 24px; border-radius: 0; position: relative;
+  background: linear-gradient(180deg, var(--tray-bright) 0%, var(--tray-main) 100%);
+  box-shadow: inset 1px 0 0 rgba(255,255,255,0.3);
+  color: #fff; font-size: 13px; font-weight: 600; display: flex; align-items: center;
+}
+.tray::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 55%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 100%);
+  pointer-events: none;
+}
+.tray > * { position: relative; z-index: 1; }
+.tray-toggle {
+  position: absolute; left: 0; top: 50%; transform: translate(-50%, -50%);
+  width: 17px; height: 17px; border-radius: 50%;
+  background: linear-gradient(180deg, var(--tray-bright) 0%, var(--tray-main) 100%);
+  border: 1.2px solid rgba(255,255,255,0.7);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.6), 0 1px 3px rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 2;
+}
+.tray-toggle svg { width: 8px; height: 8px; }
+.tray-icons { display: flex; align-items: center; gap: 5px; margin-right: 10px; }
+.tray-icons svg { width: 17px; height: 17px; display: block; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.45)); }

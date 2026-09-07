@@ -60,12 +60,31 @@ function showApp(nickname, isAdmin) {
   adminLink.classList.toggle('hidden', !isAdmin);
   xpScreen.classList.add('hidden');
   appScreen.classList.remove('hidden');
+  updateClock();
 }
 
 function showXp() {
   xpScreen.classList.remove('hidden');
   appScreen.classList.add('hidden');
 }
+
+function pad(n) {
+  return n.toString().padStart(2, '0');
+}
+function updateClock() {
+  const clockEl = document.getElementById('clock');
+  if (!clockEl) return;
+  const d = new Date();
+  clockEl.textContent = pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+setInterval(updateClock, 1000 * 30);
+
+document.querySelectorAll('.window-side-menu .desktop-icon').forEach((item) => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.window-side-menu .desktop-icon').forEach((i) => i.classList.remove('active'));
+    item.classList.add('active');
+  });
+});
 
 async function checkSession() {
   try {
