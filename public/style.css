@@ -362,7 +362,7 @@ html, body { margin: 0; height: 100%; font-family: var(--font); }
 .poke-status strong { color: #173EBF; font-size: 15px; }
 .member-list { display: flex; flex-direction: column; gap: 8px; }
 .member-row {
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   background: #fff; border: 1px solid #D7E0F5; border-radius: 8px; padding: 0.6rem 0.9rem;
 }
 .member-info { display: flex; flex-direction: column; align-items: flex-start; min-width: 80px; gap: 3px; }
@@ -608,3 +608,58 @@ html, body { margin: 0; height: 100%; font-family: var(--font); }
 .diary-entry-foot { display: flex; justify-content: space-between; align-items: center; }
 .diary-chapter-col { margin-bottom: 4px; }
 .diary-chapter-label { font-size: 11px; font-weight: 700; color: #96A4C4; margin-bottom: 4px; }
+
+/* 관리자 메뉴 패널 */
+.admin-point-form { display: flex; gap: 6px; align-items: center; margin-top: 6px; width: 100%; }
+
+/* 내 컴퓨터 - 광고 배너 */
+.ad-banner-wrap { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.ad-banner-large, .ad-banner-small {
+  display: block; border-radius: 8px; overflow: hidden; border: 1px solid #D7E0F5;
+  background: #EDF1FA;
+}
+.ad-banner-large img { width: 100%; height: 90px; object-fit: cover; display: block; }
+.ad-banner-row { display: flex; gap: 8px; }
+.ad-banner-small { flex: 1; }
+.ad-banner-small img { width: 100%; height: 56px; object-fit: cover; display: block; }
+
+/* 내 컴퓨터 - 프로필 카드 */
+.profile-card {
+  display: flex; gap: 16px; background: #fff; border: 1px solid #D7E0F5; border-radius: 10px;
+  padding: 1rem; margin-bottom: 20px;
+}
+.profile-photo-wrap { position: relative; flex-shrink: 0; }
+.profile-photo-box {
+  width: 96px; height: 96px; border: 2px solid #B9C6E6; border-radius: 8px; background: #F5F8FF;
+}
+.profile-photo-edit-btn {
+  position: absolute; bottom: -6px; right: -6px; width: 24px; height: 24px; border-radius: 50%;
+  background: #fff; border: 1.5px solid #B9C6E6; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.profile-photo-edit-btn:hover { background: #F0F4FF; }
+.profile-card-info { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 8px; min-width: 0; }
+.profile-card-nick { font-size: 16px; font-weight: 700; color: #16327A; }
+.profile-card-intro-row { display: flex; align-items: center; gap: 8px; }
+.profile-card-intro { font-size: 12.5px; color: #4C5F91; line-height: 1.4; flex: 1; word-break: break-word; }
+.profile-intro-edit-btn {
+  width: 20px; height: 20px; border-radius: 50%; background: #F0F4FF; border: 1px solid #D7E0F5;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
+}
+.profile-intro-edit-btn:hover { background: #E0E9FF; }
+.profile-card-bottom-row { display: flex; align-items: center; gap: 10px; }
+.profile-card-points { font-size: 13px; font-weight: 700; color: #B8860B; }
+
+/* 내 컴퓨터 - 드라이브 스타일 아이템 목록 */
+.drive-section { margin-bottom: 18px; }
+.drive-section-title {
+  display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #16327A;
+  margin-bottom: 8px;
+}
+.drive-item-list { display: flex; flex-direction: column; gap: 6px; }
+.drive-item-row {
+  display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #E5EAF7;
+  border-radius: 6px; padding: 0.45rem 0.7rem; font-size: 12px;
+}
+.drive-item-type { font-weight: 700; color: #4C5F91; flex-shrink: 0; }
+.drive-item-name { flex: 1; color: #2A3A5F; word-break: break-word; }

@@ -17,6 +17,7 @@ const msnRouter = require('./routes/msn');
 const tasteRouter = require('./routes/taste');
 const settingsRouter = require('./routes/settings');
 const diaryRouter = require('./routes/diary');
+const adsRouter = require('./routes/ads');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -53,6 +54,7 @@ app.use('/api/msn', msnRouter);
 app.use('/api/taste', tasteRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/diary', diaryRouter);
+app.use('/api/ads', adsRouter);
 
 // 로그인이 필요한 API를 보호하기 위한 미들웨어 (다음 단계인 게시판/채팅에서 사용 예정)
 function requireLogin(req, res, next) {

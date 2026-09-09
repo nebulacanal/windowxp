@@ -315,6 +315,12 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_gacha_draws_user ON gacha_draws(user_id);
+
+  CREATE TABLE IF NOT EXISTS ad_banners (
+    slot TEXT PRIMARY KEY, -- 'large' | 'small1' | 'small2'
+    image_url TEXT NOT NULL DEFAULT '',
+    link_url TEXT NOT NULL DEFAULT ''
+  );
 `);
 
 // 기존 DB에 preference/points/profile_note 컬럼이 없을 수도 있으니 안전하게 추가 (이미 있으면 무시)
@@ -330,6 +336,11 @@ try {
 }
 try {
   db.exec("ALTER TABLE users ADD COLUMN profile_note TEXT NOT NULL DEFAULT ''");
+} catch (err) {
+  // 이미 있으면 무시
+}
+try {
+  db.exec("ALTER TABLE users ADD COLUMN profile_image_url TEXT NOT NULL DEFAULT ''");
 } catch (err) {
   // 이미 있으면 무시
 }

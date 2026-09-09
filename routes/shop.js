@@ -58,6 +58,8 @@ router.get('/inventory', requireLogin, (req, res) => {
   res.json({
     received: shop.listMyReceivedItems(req.session.userId),
     magnifierCount: shop.countUnusedMagnifiers(req.session.userId),
+    purchased: shop.listMyPurchases(req.session.userId),
+    used: shop.listMyUsedItems(req.session.userId),
   });
 });
 

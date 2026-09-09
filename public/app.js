@@ -71,7 +71,11 @@ function showApp(nickname, isAdmin, pointsBalance) {
   currentUser = { nickname, isAdmin: !!isAdmin, points: typeof pointsBalance === 'number' ? pointsBalance : 0 };
   xpScreen.classList.add('hidden');
   appScreen.classList.remove('hidden');
-  renderHomeView();
+  document.getElementById('admin-icon').classList.toggle('hidden', !currentUser.isAdmin);
+  document.querySelectorAll('.window-side-menu .desktop-icon').forEach((i) => i.classList.remove('active'));
+  const myComputerIcon = document.querySelector('.window-side-menu .desktop-icon[data-view="my-computer"]');
+  if (myComputerIcon) myComputerIcon.classList.add('active');
+  renderMyComputerView();
   updateClock();
   refreshNotifBadge();
   applyMenuVisibility();
@@ -300,60 +304,197 @@ function renderHomeView() {
   document.getElementById('admin-link').classList.toggle('hidden', !currentUser.isAdmin);
 }
 
+function pencilIconSvg() {
+  return `<svg viewBox="0 0 16 16" fill="none" width="13" height="13">
+    <path d="M11.4 1.4a1.4 1.4 0 0 1 2 0l1.2 1.2a1.4 1.4 0 0 1 0 2L5.4 13.8l-3.8 1 1-3.8L11.4 1.4Z" fill="#fff" stroke="#4C5F91" stroke-width="1.1" stroke-linejoin="round"/>
+    <path d="M10 3.2l2.8 2.8" stroke="#4C5F91" stroke-width="1.1"/>
+  </svg>`;
+}
+
+function driveIconSvg(color) {
+  return `<svg viewBox="0 0 32 22" width="26" height="18">
+    <rect x="1.5" y="5" width="21" height="12" rx="2.2" fill="#EDF1FA" stroke="#8A97B8" stroke-width="1.3"/>
+    <rect x="21" y="8" width="9" height="6" rx="1.3" fill="#D3DAE8" stroke="#8A97B8" stroke-width="1.1"/>
+    <circle cx="7" cy="11" r="2.1" fill="${color}"/>
+  </svg>`;
+}
+
 async function renderMyComputerView() {
   winTitleText.textContent = '내 컴퓨터 - 내 정보';
   winBody.innerHTML = '<p class="view-loading">불러오는 중...</p>';
   try {
-    const [profileRes, invRes] = await Promise.all([
+    const [profileRes, invRes, adsRes] = await Promise.all([
       fetch('/api/profile/me'),
       fetch('/api/shop/inventory'),
+      fetch('/api/ads'),
     ]);
     if (!profileRes.ok) throw new Error('load-failed');
     const { profile } = await profileRes.json();
-    const inv = invRes.ok ? await invRes.json() : { received: [], magnifierCount: 0 };
+    const inv = invRes.ok ? await invRes.json() : { received: [], purchased: [], used: [], magnifierCount: 0 };
+    const { banners } = adsRes.ok ? await adsRes.json() : { banners: {} };
+
+    // ── 광고 배너 ─────────────────────────────────────────
+    const largeBannerHtml = banners.large && banners.large.imageUrl
+      ? `<a href="${escapeHtml(banners.large.linkUrl || '#')}" target="${banners.large.linkUrl ? '_blank' : '_self'}" class="ad-banner-large"><img src="${escapeHtml(banners.large.imageUrl)}" alt="광고" /></a>`
+      : '';
+    const smallBannerHtml = (slot) =>
+      banners[slot] && banners[slot].imageUrl
+        ? `<a href="${escapeHtml(banners[slot].linkUrl || '#')}" target="${banners[slot].linkUrl ? '_blank' : '_self'}" class="ad-banner-small"><img src="${escapeHtml(banners[slot].imageUrl)}" alt="광고" /></a>`
+        : '';
+    const small1Html = smallBannerHtml('small1');
+    const small2Html = smallBannerHtml('small2');
+    const smallRowHtml = small1Html || small2Html ? `<div class="ad-banner-row">${small1Html}${small2Html}</div>` : '';
+    const adSectionHtml =
+      largeBannerHtml || smallRowHtml ? `<div class="ad-banner-wrap">${largeBannerHtml}${smallRowHtml}</div>` : '';
+
+    // ── 아이템 3종 목록 ─────────────────────────────────────────
+    const purchasedRowsHtml = inv.purchased.length
+      ? inv.purchased
+          .map(
+            (p) => `
+            <div class="drive-item-row">
+              <span class="drive-item-type">${SHOP_TYPE_LABEL[p.type] || p.type}</span>
+              <span class="drive-item-name">${escapeHtml(p.itemName)}${p.recipientNickname ? ` → ${escapeHtml(p.recipientNickname)}` : ''}</span>
+              <span class="feed-card-time">${formatFeedTime(p.createdAt)}</span>
+            </div>`
+          )
+          .join('')
+      : '<p class="view-muted">아직 구매한 아이템이 없어요.</p>';
+
+    const receivedRowsHtml = inv.received.length
+      ? inv.received
+          .map((r) => {
+            const senderLabel = r.revealed
+              ? escapeHtml(r.senderNickname)
+              : inv.magnifierCount > 0
+              ? `<button type="button" class="feed-unlock-btn mycomp-reveal-btn" data-target-id="${r.id}">🔍 공개</button>`
+              : '??? (돋보기 필요)';
+            const extra = r.type === 'anon_note' && r.message ? ` "${escapeHtml(r.message)}"` : '';
+            return `
+              <div class="drive-item-row">
+                <span class="drive-item-type">${SHOP_TYPE_LABEL[r.type] || r.type}</span>
+                <span class="drive-item-name">${escapeHtml(r.itemName)}${extra} · from ${senderLabel}</span>
+                <span class="feed-card-time">${formatFeedTime(r.createdAt)}</span>
+              </div>`;
+          })
+          .join('')
+      : '<p class="view-muted">아직 받은 아이템이 없어요.</p>';
+
+    const usedRowsHtml = inv.used.length
+      ? inv.used
+          .map(
+            (u) => `
+            <div class="drive-item-row">
+              <span class="drive-item-type">${SHOP_TYPE_LABEL[u.type] || u.type}</span>
+              <span class="drive-item-name">${escapeHtml(u.itemName)}</span>
+              <span class="feed-card-time">${formatFeedTime(u.createdAt)}</span>
+            </div>`
+          )
+          .join('')
+      : '<p class="view-muted">아직 사용한 아이템이 없어요.</p>';
+
+    const photoStyle = profile.profileImageUrl
+      ? `background-image:url('${escapeHtml(profile.profileImageUrl)}'); background-size:cover; background-position:center;`
+      : '';
 
     winBody.innerHTML = `
-      <div class="profile-view">
-        <div class="profile-row"><span class="profile-label">닉네임</span><span class="profile-value">${escapeHtml(profile.nickname)}</span></div>
-        <div class="profile-row"><span class="profile-label">성향 · 커리큘럼</span><span class="profile-value">${escapeHtml(profile.badge)}</span></div>
-        <div class="profile-row"><span class="profile-label">포인트</span><span class="profile-value">💰 ${profile.points} P</span></div>
-        <div class="profile-row profile-row-column">
-          <span class="profile-label">내 문서 (자기소개)</span>
-          <textarea id="profile-note-input" maxlength="500" placeholder="다른 회원에게 보여질 소개를 적어보세요">${escapeHtml(profile.profile_note)}</textarea>
-          <div class="profile-note-footer">
-            <span id="profile-note-count">${profile.profile_note.length}/500</span>
-            <button type="button" id="profile-save-btn" class="view-btn">저장</button>
-          </div>
-          <p id="profile-save-msg" class="view-msg hidden"></p>
+      ${adSectionHtml}
+
+      <div class="profile-card">
+        <div class="profile-photo-wrap">
+          <div class="profile-photo-box" style="${photoStyle}"></div>
+          <div class="profile-photo-edit-btn" id="profile-photo-edit-btn">${pencilIconSvg()}</div>
         </div>
-        <div class="profile-section-title">아이템</div>
-        <p class="view-muted">받은 아이템 ${inv.received.length}개 · 보유 돋보기 ${inv.magnifierCount}개. 전체 내역과 사용은 알씨(상점)에서 확인할 수 있어요.</p>
+        <div class="profile-card-info">
+          <div class="profile-card-nick">${escapeHtml(profile.nickname)}</div>
+          <div class="profile-card-intro-row">
+            <span class="profile-card-intro" id="profile-intro-display">${escapeHtml(profile.profile_note) || '<span class="view-muted">소개를 작성해보세요</span>'}</span>
+            <span class="profile-intro-edit-btn" id="profile-intro-edit-btn">${pencilIconSvg()}</span>
+          </div>
+          <div class="profile-card-bottom-row">
+            <span class="profile-card-points">💰 ${profile.points}P</span>
+            <span class="pref-badge pref-top">${escapeHtml(profile.badge)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="drive-section">
+        <div class="drive-section-title">${driveIconSvg('#3B82ED')} 구매한 아이템 (I:)</div>
+        <div class="drive-item-list">${purchasedRowsHtml}</div>
+      </div>
+      <div class="drive-section">
+        <div class="drive-section-title">${driveIconSvg('#3ED67A')} 받은 아이템 (L:)</div>
+        <div class="drive-item-list">${receivedRowsHtml}</div>
+      </div>
+      <div class="drive-section">
+        <div class="drive-section-title">${driveIconSvg('#F4A93C')} 사용 내역 (H:)</div>
+        <div class="drive-item-list">${usedRowsHtml}</div>
       </div>
     `;
 
-    const textarea = document.getElementById('profile-note-input');
-    const countEl = document.getElementById('profile-note-count');
-    textarea.addEventListener('input', () => {
-      countEl.textContent = `${textarea.value.length}/500`;
-    });
-
-    document.getElementById('profile-save-btn').addEventListener('click', async () => {
-      const msgEl = document.getElementById('profile-save-msg');
-      msgEl.classList.add('hidden');
+    // 프로필 사진 수정
+    document.getElementById('profile-photo-edit-btn').addEventListener('click', async () => {
+      const url = prompt('프로필 사진 이미지 주소(URL)를 입력해 주세요:', profile.profileImageUrl || '');
+      if (url === null) return;
       try {
-        const saveRes = await fetch('/api/profile/me', {
+        const r = await fetch('/api/profile/me', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ profileNote: textarea.value }),
+          body: JSON.stringify({ profileImageUrl: url.trim() }),
         });
-        const data = await saveRes.json();
-        if (!saveRes.ok) throw new Error(data.error || '저장에 실패했어요.');
-        msgEl.textContent = '저장했어요!';
-        msgEl.classList.remove('hidden');
+        const d = await r.json();
+        if (!r.ok) return alert(d.error || '저장에 실패했어요.');
+        renderMyComputerView();
       } catch (err) {
-        msgEl.textContent = err.message || '저장에 실패했어요.';
-        msgEl.classList.remove('hidden');
+        alert('서버에 연결할 수 없어요.');
       }
+    });
+
+    // 자기소개 수정 (연필 누르면 편집 모드로 전환)
+    document.getElementById('profile-intro-edit-btn').addEventListener('click', () => {
+      const row = document.querySelector('.profile-card-intro-row');
+      row.innerHTML = `
+        <textarea id="profile-note-input" class="memo-input" maxlength="500" style="flex:1; min-height:50px;">${escapeHtml(profile.profile_note)}</textarea>
+        <button type="button" id="profile-note-save" class="view-btn" style="margin-left:6px;">저장</button>
+      `;
+      document.getElementById('profile-note-save').addEventListener('click', async () => {
+        const textarea = document.getElementById('profile-note-input');
+        try {
+          const r = await fetch('/api/profile/me', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ profileNote: textarea.value }),
+          });
+          const d = await r.json();
+          if (!r.ok) return alert(d.error || '저장에 실패했어요.');
+          renderMyComputerView();
+        } catch (err) {
+          alert('서버에 연결할 수 없어요.');
+        }
+      });
+    });
+
+    document.querySelectorAll('.mycomp-reveal-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        try {
+          const r = await fetch('/api/shop/reveal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ targetPurchaseId: Number(btn.dataset.targetId) }),
+          });
+          const d = await r.json();
+          if (!r.ok) {
+            alert(d.error || '공개에 실패했어요.');
+            btn.disabled = false;
+            return;
+          }
+          renderMyComputerView();
+        } catch (err) {
+          alert('서버에 연결할 수 없어요.');
+          btn.disabled = false;
+        }
+      });
     });
   } catch (err) {
     winBody.innerHTML = '<p class="view-msg">정보를 불러오지 못했어요.</p>';
@@ -740,28 +881,6 @@ async function renderFeedView() {
     const feedsById = {};
     feeds.forEach((f) => { feedsById[f.id] = f; });
 
-    const composeHtml = currentUser.isAdmin
-      ? `
-        <div class="feed-admin-compose">
-          <div class="feed-admin-compose-title">📝 새 피드 작성 (관리자)</div>
-          <select id="feed-new-type" class="soribada-select">
-            <option value="normal">일반 피드</option>
-            <option value="participatory">참여형 피드 (댓글 달아야 남의 댓글 보임)</option>
-            <option value="secret">비밀 피드 (포인트로 댓글 열람)</option>
-          </select>
-          <textarea id="feed-new-content" class="memo-input feed-new-textarea" placeholder="피드 내용을 입력하세요"></textarea>
-          <div class="feed-admin-compose-row">
-            <label>댓글 보상 <input type="number" id="feed-new-reward" min="0" value="0" class="feed-num-input" /> P</label>
-            <label>열람 가격 <input type="number" id="feed-new-unlock" min="0" value="0" class="feed-num-input" /> P (비밀 피드용)</label>
-          </div>
-          <div class="feed-admin-compose-row">
-            <label>예약 발행 <input type="datetime-local" id="feed-new-publish" class="feed-num-input" style="width:auto;" /> (비워두면 즉시 발행)</label>
-          </div>
-          <p id="feed-new-error" class="xp-error hidden"></p>
-          <button type="button" id="feed-new-submit" class="view-btn">피드 등록</button>
-        </div>`
-      : '';
-
     const feedsHtml = feeds.length
       ? feeds
           .map((feed) => {
@@ -784,7 +903,7 @@ async function renderFeedView() {
           .join('')
       : '<p class="view-muted view-placeholder">아직 등록된 피드가 없어요.</p>';
 
-    winBody.innerHTML = composeHtml + `<div class="feed-list">${feedsHtml}</div>`;
+    winBody.innerHTML = `<div class="feed-list">${feedsHtml}</div>`;
 
     document.querySelectorAll('.feed-card').forEach((card) => {
       const feedId = card.dataset.feedId;
@@ -822,42 +941,6 @@ async function renderFeedView() {
         toggleFeedComments(feedId, feedsById[feedId]);
       });
     });
-
-    if (currentUser.isAdmin) {
-      document.getElementById('feed-new-submit').addEventListener('click', async () => {
-        const errorEl = document.getElementById('feed-new-error');
-        errorEl.classList.add('hidden');
-        const type = document.getElementById('feed-new-type').value;
-        const content = document.getElementById('feed-new-content').value.trim();
-        const pointReward = parseInt(document.getElementById('feed-new-reward').value, 10) || 0;
-        const unlockPrice = parseInt(document.getElementById('feed-new-unlock').value, 10) || 0;
-        const publishAt = document.getElementById('feed-new-publish').value || null;
-
-        if (!content) {
-          errorEl.textContent = '피드 내용을 입력해 주세요.';
-          errorEl.classList.remove('hidden');
-          return;
-        }
-
-        try {
-          const fres = await fetch('/api/admin/feeds', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type, content, pointReward, unlockPrice, publishAt }),
-          });
-          const fdata = await fres.json();
-          if (!fres.ok) {
-            errorEl.textContent = fdata.error || '등록에 실패했어요.';
-            errorEl.classList.remove('hidden');
-            return;
-          }
-          renderFeedView();
-        } catch (err) {
-          errorEl.textContent = '서버에 연결할 수 없어요.';
-          errorEl.classList.remove('hidden');
-        }
-      });
-    }
   } catch (err) {
     winBody.innerHTML = '<p class="view-msg">피드를 불러오지 못했어요.</p>';
   }
@@ -910,7 +993,8 @@ async function buildGachaAdminHtml() {
   }
 }
 
-function bindGachaAdmin() {
+function bindGachaAdmin(refreshFn) {
+  const refresh = refreshFn || renderAdminShopTab;
   const submitBtn = document.getElementById('gacha-new-submit');
   if (submitBtn) {
     submitBtn.addEventListener('click', async () => {
@@ -935,7 +1019,7 @@ function bindGachaAdmin() {
         errorEl.classList.remove('hidden');
         return;
       }
-      renderShopView();
+      refresh();
     });
   }
   document.querySelectorAll('.gacha-toggle-btn').forEach((btn) => {
@@ -945,7 +1029,7 @@ function bindGachaAdmin() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ active: btn.dataset.enabled === '1' }),
       });
-      renderShopView();
+      refresh();
     });
   });
 }
@@ -967,7 +1051,6 @@ async function renderShopView() {
     const { received, magnifierCount } = await invRes.json();
     const { points: myPoints } = await meRes.json();
     const { draws: myDraws } = gachaRes.ok ? await gachaRes.json() : { draws: [] };
-    const adminGachaHtml = currentUser.isAdmin ? await buildGachaAdminHtml() : '';
 
     const memberOptions = members
       .filter((m) => m.nickname !== currentUser.nickname)
@@ -1050,8 +1133,6 @@ async function renderShopView() {
               .join('')
           : '<p class="view-muted">아직 뽑은 적 없어요.</p>'
       }</div>
-
-      ${adminGachaHtml}
     `;
 
     let selectedItem = null;
@@ -1198,8 +1279,6 @@ async function renderShopView() {
         }
       });
     });
-
-    if (currentUser.isAdmin) bindGachaAdmin();
   } catch (err) {
     winBody.innerHTML = '<p class="view-msg">상점을 불러오지 못했어요.</p>';
   }
@@ -1246,28 +1325,12 @@ async function renderMsnTopicsTab() {
     if (!res.ok) throw new Error('load-failed');
     const { topics } = await res.json();
 
-    const composeHtml = currentUser.isAdmin
-      ? `
-        <div class="feed-admin-compose">
-          <div class="feed-admin-compose-title">📝 새 주제 등록 (관리자)</div>
-          <textarea id="msn-new-content" class="memo-input feed-new-textarea" placeholder="주제 내용을 입력하세요"></textarea>
-          <div class="feed-admin-compose-row">
-            <label>수정 마감 <input type="datetime-local" id="msn-new-deadline" class="feed-num-input" style="width:auto;" /> (선택)</label>
-          </div>
-          <p id="msn-new-error" class="xp-error hidden"></p>
-          <button type="button" id="msn-new-submit" class="view-btn">주제 등록</button>
-        </div>`
-      : '';
-
     const topicsHtml = topics.length
       ? topics
           .map((t) => {
             const shareBadge = t.sharingEnabled
               ? '<span class="msn-share-badge on">공유 중</span>'
               : '<span class="msn-share-badge off">공유 대기</span>';
-            const adminToggle = currentUser.isAdmin
-              ? `<button type="button" class="ghost-btn-shop msn-toggle-share" data-topic-id="${t.id}" data-enabled="${t.sharingEnabled ? '0' : '1'}">${t.sharingEnabled ? '공유 끄기' : '공유 켜기'}</button>`
-              : '';
 
             let bodyHtml;
             if (!t.hasAnswered) {
@@ -1292,14 +1355,14 @@ async function renderMsnTopicsTab() {
                   <span class="feed-card-time">${formatMsnTime(t.createdAt)}</span>
                 </div>
                 <div class="feed-card-content">${escapeHtml(t.content)}</div>
-                <div class="msn-meta">답변 ${t.answerCount}개 ${adminToggle}</div>
+                <div class="msn-meta">답변 ${t.answerCount}개</div>
                 ${bodyHtml}
               </div>`;
           })
           .join('')
       : '<p class="view-muted view-placeholder">아직 등록된 주제가 없어요.</p>';
 
-    winBody.innerHTML = msnNavHtml() + composeHtml + `<div class="feed-list">${topicsHtml}</div>`;
+    winBody.innerHTML = msnNavHtml() + `<div class="feed-list">${topicsHtml}</div>`;
     bindMsnNav();
 
     document.querySelectorAll('.msn-answer-submit').forEach((btn) => {
@@ -1326,48 +1389,6 @@ async function renderMsnTopicsTab() {
     document.querySelectorAll('.msn-answers-toggle').forEach((el) => {
       el.addEventListener('click', () => toggleMsnAnswers(el.dataset.topicId));
     });
-
-    if (currentUser.isAdmin) {
-      document.querySelectorAll('.msn-toggle-share').forEach((btn) => {
-        btn.addEventListener('click', async () => {
-          await fetch(`/api/admin/msn/topics/${btn.dataset.topicId}/sharing`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ enabled: btn.dataset.enabled === '1' }),
-          });
-          renderMsnTopicsTab();
-        });
-      });
-
-      document.getElementById('msn-new-submit').addEventListener('click', async () => {
-        const errorEl = document.getElementById('msn-new-error');
-        errorEl.classList.add('hidden');
-        const content = document.getElementById('msn-new-content').value.trim();
-        const editDeadline = document.getElementById('msn-new-deadline').value || null;
-        if (!content) {
-          errorEl.textContent = '주제 내용을 입력해 주세요.';
-          errorEl.classList.remove('hidden');
-          return;
-        }
-        try {
-          const r = await fetch('/api/admin/msn/topics', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content, editDeadline }),
-          });
-          const d = await r.json();
-          if (!r.ok) {
-            errorEl.textContent = d.error || '등록에 실패했어요.';
-            errorEl.classList.remove('hidden');
-            return;
-          }
-          renderMsnTopicsTab();
-        } catch (err) {
-          errorEl.textContent = '서버에 연결할 수 없어요.';
-          errorEl.classList.remove('hidden');
-        }
-      });
-    }
   } catch (err) {
     winBody.innerHTML = msnNavHtml() + '<p class="view-msg">주제를 불러오지 못했어요.</p>';
     bindMsnNav();
@@ -1638,22 +1659,6 @@ async function renderTasteView() {
     if (!res.ok) throw new Error('load-failed');
     const { answers } = await res.json();
 
-    const adminQuestionsHtml = currentUser.isAdmin
-      ? `
-        <div class="feed-admin-compose">
-          <div class="feed-admin-compose-title">📝 새 질문 등록 (관리자)</div>
-          <input type="text" id="taste-new-question" class="xp-input" placeholder="질문 내용을 입력하세요" />
-          <select id="taste-new-type" class="soribada-select" style="margin-top:6px;">
-            <option value="text">서술형</option>
-            <option value="radio">라디오 (하나만 선택)</option>
-            <option value="checkbox">체크박스 (여러 개 선택)</option>
-          </select>
-          <input type="text" id="taste-new-options" class="xp-input hidden" placeholder="선택지를 쉼표(,)로 구분해서 입력 (예: 귀여운,섹시한,청순한)" style="margin-top:6px;" />
-          <p id="taste-new-error" class="xp-error hidden" style="margin-top:6px;"></p>
-          <button type="button" id="taste-new-submit" class="view-btn" style="margin-top:8px;">질문 등록</button>
-        </div>`
-      : '';
-
     const questionsHtml = answers.length
       ? answers
           .map(
@@ -1667,7 +1672,6 @@ async function renderTasteView() {
       : '<p class="view-muted">아직 등록된 질문이 없어요.</p>';
 
     winBody.innerHTML = `
-      ${adminQuestionsHtml}
       <div class="shop-section-title">내 취향표 작성</div>
       <p class="view-muted" style="margin-bottom:10px;">여기 적은 내용은 아무 데도 안 보여요. 누군가 상점에서 동전으로 나를 지목해 구매해야만 볼 수 있어요.</p>
       <div class="taste-question-list">${questionsHtml}</div>
@@ -1735,53 +1739,6 @@ async function renderTasteView() {
         resultEl.innerHTML = '<p class="view-msg">서버에 연결할 수 없어요.</p>';
       }
     });
-
-    if (currentUser.isAdmin) {
-      const typeSelect = document.getElementById('taste-new-type');
-      const optionsInput = document.getElementById('taste-new-options');
-      typeSelect.addEventListener('change', () => {
-        optionsInput.classList.toggle('hidden', typeSelect.value === 'text');
-      });
-
-      document.getElementById('taste-new-submit').addEventListener('click', async () => {
-        const errorEl = document.getElementById('taste-new-error');
-        errorEl.classList.add('hidden');
-        const questionText = document.getElementById('taste-new-question').value.trim();
-        const questionType = typeSelect.value;
-        const options = optionsInput.value
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean);
-
-        if (!questionText) {
-          errorEl.textContent = '질문 내용을 입력해 주세요.';
-          errorEl.classList.remove('hidden');
-          return;
-        }
-        if (questionType !== 'text' && options.length < 2) {
-          errorEl.textContent = '선택지를 2개 이상 입력해 주세요 (쉼표로 구분).';
-          errorEl.classList.remove('hidden');
-          return;
-        }
-        try {
-          const r = await fetch('/api/admin/taste/questions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ questionText, questionType, options }),
-          });
-          const d = await r.json();
-          if (!r.ok) {
-            errorEl.textContent = d.error || '등록에 실패했어요.';
-            errorEl.classList.remove('hidden');
-            return;
-          }
-          renderTasteView();
-        } catch (err) {
-          errorEl.textContent = '서버에 연결할 수 없어요.';
-          errorEl.classList.remove('hidden');
-        }
-      });
-    }
   } catch (err) {
     winBody.innerHTML = '<p class="view-msg">취향표를 불러오지 못했어요.</p>';
   }
@@ -1803,11 +1760,8 @@ async function renderDiaryView() {
     if (!res.ok) throw new Error('load-failed');
     const status = await res.json();
 
-    const adminHtml = currentUser.isAdmin ? await buildDiaryAdminHtml() : '';
-
     if (status.status === 'not_applied') {
       winBody.innerHTML = `
-        ${adminHtml}
         <div class="view-placeholder" style="margin-top:3rem; text-align:center;">
           <p class="view-muted" style="margin-bottom:14px;">참여하면 관리자가 비밀친구를 정해줘요.<br>서로 누군지 모른 채 장(章)마다 주어진 주제로 일기를 주고받게 돼요.</p>
           <button type="button" id="diary-apply-btn" class="view-btn">참여 신청하기</button>
@@ -1818,13 +1772,11 @@ async function renderDiaryView() {
         if (!r.ok) return alert(d.error || '신청에 실패했어요.');
         renderDiaryView();
       });
-      bindDiaryAdmin();
       return;
     }
 
     if (status.status === 'applied') {
       winBody.innerHTML = `
-        ${adminHtml}
         <div class="view-placeholder" style="margin-top:3rem; text-align:center;">
           <p class="view-muted" style="margin-bottom:14px;">✅ 신청 완료! 관리자가 비밀친구를 정해줄 때까지 기다려주세요.</p>
           <button type="button" id="diary-cancel-btn" class="ghost-btn-shop">신청 취소</button>
@@ -1835,7 +1787,6 @@ async function renderDiaryView() {
         if (!r.ok) return alert(d.error || '취소에 실패했어요.');
         renderDiaryView();
       });
-      bindDiaryAdmin();
       return;
     }
 
@@ -1928,7 +1879,6 @@ async function renderDiaryView() {
     }
 
     winBody.innerHTML = `
-      ${adminHtml}
       <div class="shop-header"><span>${partnerLabel}</span></div>
       ${finished ? '<p class="view-muted" style="margin-bottom:10px;">📕 교환일기가 종료됐어요. 이제 읽기만 가능해요.</p>' : ''}
       <div class="shop-section-title">장별 주제</div>
@@ -2018,14 +1968,12 @@ async function renderDiaryView() {
         renderDiaryView();
       });
     }
-
-    bindDiaryAdmin();
   } catch (err) {
     winBody.innerHTML = '<p class="view-msg">교환일기를 불러오지 못했어요.</p>';
   }
 }
 
-async function buildDiaryAdminHtml() {
+async function buildDiaryAdminHtml(refreshFn) {
   try {
     const [appRes, pairRes, stateRes] = await Promise.all([
       fetch('/api/admin/diary/applicants'),
@@ -2047,7 +1995,9 @@ async function buildDiaryAdminHtml() {
                 <span class="member-nick">${escapeHtml(p.a_nickname)} ↔ ${escapeHtml(p.b_nickname)}</span>
               </div>
               <div class="member-note">답장 ${p.a_entry_count}/${p.b_entry_count} · 결과 ${p.guess_result ? DIARY_RESULT_MESSAGE[p.guess_result] : '미정'}</div>
+              <span class="msn-answers-toggle diary-pair-view-btn" data-pair-id="${p.id}">대화 보기</span>
               <button type="button" class="poke-btn diary-unpair-btn" data-pair-id="${p.id}">해제</button>
+              <div class="msn-answers-wrap" id="adiary-detail-${p.id}" style="width:100%;"></div>
             </div>`
           )
           .join('')
@@ -2089,7 +2039,8 @@ async function buildDiaryAdminHtml() {
   }
 }
 
-function bindDiaryAdmin() {
+function bindDiaryAdmin(refreshFn) {
+  const refresh = refreshFn || renderAdminDiaryTab;
   const submitBtn = document.getElementById('diary-pair-submit');
   if (submitBtn) {
     submitBtn.addEventListener('click', async () => {
@@ -2109,14 +2060,14 @@ function bindDiaryAdmin() {
         errorEl.classList.remove('hidden');
         return;
       }
-      renderDiaryView();
+      refresh();
     });
   }
   document.querySelectorAll('.diary-unpair-btn').forEach((btn) => {
     btn.addEventListener('click', async () => {
       if (!confirm('이 짝을 해제할까요?')) return;
       await fetch(`/api/admin/diary/pairs/${btn.dataset.pairId}`, { method: 'DELETE' });
-      renderDiaryView();
+      refresh();
     });
   });
 
@@ -2133,7 +2084,7 @@ function bindDiaryAdmin() {
       });
       const d = await r.json();
       if (!r.ok) return alert(d.error || '등록에 실패했어요.');
-      renderDiaryView();
+      refresh();
     });
   }
 
@@ -2142,7 +2093,7 @@ function bindDiaryAdmin() {
     openGuessingBtn.addEventListener('click', async () => {
       if (!confirm('추측 단계를 열까요? 회원들이 서로를 추측할 수 있게 돼요.')) return;
       await fetch('/api/admin/diary/guessing/open', { method: 'POST' });
-      renderDiaryView();
+      refresh();
     });
   }
 
@@ -2151,8 +2102,778 @@ function bindDiaryAdmin() {
     finishBtn.addEventListener('click', async () => {
       if (!confirm('완전히 종료할까요? 이후 모든 작성이 중지되고 읽기만 가능해져요. 되돌릴 수 없어요.')) return;
       await fetch('/api/admin/diary/finish', { method: 'POST' });
-      renderDiaryView();
+      refresh();
     });
+  }
+}
+
+/* ===== 관리자 메뉴 (통합 관리 패널) ===== */
+
+const ADMIN_TABS = [
+  { key: 'members', label: '회원' },
+  { key: 'menus', label: '메뉴 설정' },
+  { key: 'feed', label: 'IE 피드' },
+  { key: 'shop', label: '알씨 상점' },
+  { key: 'msn', label: 'msn' },
+  { key: 'taste', label: '취향표' },
+  { key: 'diary', label: '교환일기' },
+  { key: 'memo', label: '메모장' },
+  { key: 'soribada', label: '소리바다' },
+];
+let adminTab = 'members';
+
+function adminNavHtml() {
+  return `
+    <div class="msn-nav" style="flex-wrap:wrap;">
+      ${ADMIN_TABS.map((t) => `<button type="button" class="msn-nav-btn admin-nav-btn ${adminTab === t.key ? 'active' : ''}" data-tab="${t.key}">${t.label}</button>`).join('')}
+    </div>`;
+}
+
+function bindAdminNav() {
+  document.querySelectorAll('.admin-nav-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      adminTab = btn.dataset.tab;
+      renderAdminView();
+    });
+  });
+}
+
+async function renderAdminView() {
+  winTitleText.textContent = '관리자 메뉴';
+  if (adminTab === 'members') return renderAdminMembersTab();
+  if (adminTab === 'menus') return renderAdminMenusTab();
+  if (adminTab === 'feed') return renderAdminFeedTab();
+  if (adminTab === 'shop') return renderAdminShopTab();
+  if (adminTab === 'msn') return renderAdminMsnTab();
+  if (adminTab === 'taste') return renderAdminTasteTab();
+  if (adminTab === 'diary') return renderAdminDiaryTab();
+  if (adminTab === 'memo') return renderAdminMemoTab();
+  if (adminTab === 'soribada') return renderAdminSoribadaTab();
+}
+
+// ── 회원 ─────────────────────────────────────────
+
+async function renderAdminMembersTab() {
+  winBody.innerHTML = adminNavHtml() + '<p class="view-loading">불러오는 중...</p>';
+  bindAdminNav();
+  try {
+    const [pendingRes, usersRes] = await Promise.all([fetch('/api/admin/pending'), fetch('/api/admin/users')]);
+    const { pending } = await pendingRes.json();
+    const { users } = await usersRes.json();
+
+    const pendingHtml = pending.length
+      ? pending
+          .map(
+            (u) => `
+            <div class="member-row">
+              <div class="member-info"><span class="member-nick">${escapeHtml(u.nickname)}</span></div>
+              <div class="member-note">${escapeHtml(u.badge || '')} · ${formatFeedTime(u.created_at)}</div>
+              <button type="button" class="view-btn admin-approve-btn" data-id="${u.id}">승인</button>
+              <button type="button" class="ghost-btn-shop admin-reject-btn" data-id="${u.id}">거절</button>
+            </div>`
+          )
+          .join('')
+      : '<p class="view-muted">대기 중인 가입 신청이 없어요.</p>';
+
+    const usersHtml = users
+      .map(
+        (u) => `
+        <div class="member-row">
+          <div class="member-info">
+            <span class="member-nick">${escapeHtml(u.nickname)} ${u.is_admin ? '👑' : ''}</span>
+            <span class="pref-badge pref-top">${u.status === 'approved' ? '승인됨' : u.status === 'rejected' ? '거절됨' : '대기중'}</span>
+          </div>
+          <div class="member-note">💰 ${u.points}P · 가입 ${formatFeedTime(u.created_at)}</div>
+          <div class="admin-point-form">
+            <input type="number" class="feed-num-input admin-point-amount" placeholder="±포인트" data-id="${u.id}" style="width:70px;" />
+            <input type="text" class="feed-num-input admin-point-reason" placeholder="사유" data-id="${u.id}" style="width:80px;" />
+            <button type="button" class="poke-btn admin-point-apply" data-id="${u.id}">적용</button>
+          </div>
+        </div>`
+      )
+      .join('');
+
+    winBody.innerHTML =
+      adminNavHtml() +
+      `
+      <div class="shop-section-title">가입 승인 대기 (${pending.length}명)</div>
+      <div class="member-list">${pendingHtml}</div>
+      <div class="shop-section-title" style="margin-top:18px;">전체 회원 (${users.length}명) · 포인트 지급/차감</div>
+      <div class="member-list">${usersHtml}</div>
+    `;
+    bindAdminNav();
+
+    document.querySelectorAll('.admin-approve-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        await fetch(`/api/admin/approve/${btn.dataset.id}`, { method: 'POST' });
+        renderAdminMembersTab();
+      });
+    });
+    document.querySelectorAll('.admin-reject-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('이 가입 신청을 거절할까요?')) return;
+        await fetch(`/api/admin/reject/${btn.dataset.id}`, { method: 'POST' });
+        renderAdminMembersTab();
+      });
+    });
+    document.querySelectorAll('.admin-point-apply').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const amount = parseInt(document.querySelector(`.admin-point-amount[data-id="${id}"]`).value, 10);
+        const reason = document.querySelector(`.admin-point-reason[data-id="${id}"]`).value.trim() || '관리자 지급';
+        if (!amount) return;
+        const r = await fetch('/api/admin/points/adjust', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: Number(id), amount, reason }),
+        });
+        const d = await r.json();
+        if (!r.ok) return alert(d.error || '적용에 실패했어요.');
+        renderAdminMembersTab();
+      });
+    });
+  } catch (err) {
+    winBody.innerHTML = adminNavHtml() + '<p class="view-msg">불러오지 못했어요.</p>';
+    bindAdminNav();
+  }
+}
+
+// ── 메뉴 설정 ─────────────────────────────────────────
+
+const ADMIN_MENU_LABELS = {
+  memo: '📝 메모장',
+  shop: '💿 알씨 (상점)',
+  soribada: '🎵 소리바다',
+  feed: '🌐 IE (피드)',
+  msn: '💬 msn (블라인드)',
+  taste: 'ℹ️ 취향표',
+  diary: '💌 교환일기',
+};
+
+async function renderAdminMenusTab() {
+  winBody.innerHTML = adminNavHtml() + '<p class="view-loading">불러오는 중...</p>';
+  bindAdminNav();
+  try {
+    const [menuRes, adsRes] = await Promise.all([fetch('/api/admin/menus'), fetch('/api/admin/ads')]);
+    const { menus } = await menuRes.json();
+    const { banners } = await adsRes.json();
+
+    const listHtml = Object.entries(menus)
+      .map(
+        ([key, enabled]) => `
+        <div class="member-row">
+          <div class="member-info"><span class="member-nick">${ADMIN_MENU_LABELS[key] || key}</span></div>
+          <button type="button" class="poke-btn admin-menu-toggle" data-key="${key}" data-enabled="${enabled ? '0' : '1'}">${enabled ? '켜짐 (끄기)' : '꺼짐 (켜기)'}</button>
+        </div>`
+      )
+      .join('');
+
+    const adSlotHtml = (slot, label) => `
+      <div class="feed-admin-compose" style="margin-top:10px;">
+        <div class="feed-admin-compose-title">${label}</div>
+        <input type="text" class="xp-input ad-url-input" data-slot="${slot}" placeholder="이미지 주소(URL)" value="${escapeHtml(banners[slot]?.imageUrl || '')}" />
+        <input type="text" class="xp-input ad-link-input" data-slot="${slot}" placeholder="클릭 시 이동할 링크 (선택)" value="${escapeHtml(banners[slot]?.linkUrl || '')}" style="margin-top:6px;" />
+        <button type="button" class="view-btn ad-save-btn" data-slot="${slot}" style="margin-top:8px;">저장</button>
+        <span class="ad-save-msg" data-slot="${slot}" style="margin-left:8px; font-size:11px; color:#1F8A3C;"></span>
+      </div>`;
+
+    winBody.innerHTML =
+      adminNavHtml() +
+      `<div class="shop-section-title">메뉴 노출 설정</div><div class="member-list">${listHtml}</div>
+       <div class="shop-section-title" style="margin-top:20px;">광고 배너 설정 (내 컴퓨터 상단)</div>
+       <p class="view-muted">이미지 주소를 비워두면 해당 자리는 숨겨져요.</p>
+       ${adSlotHtml('large', '큰 배너 (가로 전체)')}
+       ${adSlotHtml('small1', '작은 배너 1')}
+       ${adSlotHtml('small2', '작은 배너 2')}
+      `;
+    bindAdminNav();
+
+    document.querySelectorAll('.admin-menu-toggle').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        await fetch(`/api/admin/menus/${btn.dataset.key}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: btn.dataset.enabled === '1' }),
+        });
+        renderAdminMenusTab();
+      });
+    });
+
+    document.querySelectorAll('.ad-save-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const slot = btn.dataset.slot;
+        const imageUrl = document.querySelector(`.ad-url-input[data-slot="${slot}"]`).value.trim();
+        const linkUrl = document.querySelector(`.ad-link-input[data-slot="${slot}"]`).value.trim();
+        const msgEl = document.querySelector(`.ad-save-msg[data-slot="${slot}"]`);
+        const r = await fetch(`/api/admin/ads/${slot}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageUrl, linkUrl }),
+        });
+        const d = await r.json();
+        msgEl.textContent = r.ok ? '저장했어요!' : d.error || '실패';
+        setTimeout(() => { msgEl.textContent = ''; }, 2500);
+      });
+    });
+  } catch (err) {
+    winBody.innerHTML = adminNavHtml() + '<p class="view-msg">불러오지 못했어요.</p>';
+    bindAdminNav();
+  }
+}
+
+// ── IE 피드 ─────────────────────────────────────────
+
+async function renderAdminFeedTab() {
+  winBody.innerHTML = adminNavHtml() + '<p class="view-loading">불러오는 중...</p>';
+  bindAdminNav();
+  try {
+    const res = await fetch('/api/admin/feeds');
+    const { feeds } = await res.json();
+
+    const listHtml = feeds.length
+      ? feeds
+          .map(
+            (f) => `
+            <div class="feed-card">
+              <div class="feed-card-head">
+                <span class="feed-type-badge ${FEED_TYPE_CLASS[f.type]}">${FEED_TYPE_LABEL[f.type]}</span>
+                <span class="feed-card-time">${formatFeedTime(f.publish_at)}</span>
+              </div>
+              <div class="feed-card-content">${escapeHtml(f.content)}</div>
+              <div class="msn-meta">댓글 ${f.comment_count}개 · 보상 ${f.point_reward}P${f.type === 'secret' ? ` · 열람가 ${f.unlock_price}P` : ''}</div>
+            </div>`
+          )
+          .join('')
+      : '<p class="view-muted">등록된 피드가 없어요.</p>';
+
+    winBody.innerHTML =
+      adminNavHtml() +
+      `
+      <div class="feed-admin-compose">
+        <div class="feed-admin-compose-title">📝 새 피드 작성</div>
+        <select id="afeed-type" class="soribada-select">
+          <option value="normal">일반 피드</option>
+          <option value="participatory">참여형 피드 (댓글 달아야 남의 댓글 보임)</option>
+          <option value="secret">비밀 피드 (포인트로 댓글 열람)</option>
+        </select>
+        <textarea id="afeed-content" class="memo-input feed-new-textarea" placeholder="피드 내용을 입력하세요"></textarea>
+        <div class="feed-admin-compose-row">
+          <label>댓글 보상 <input type="number" id="afeed-reward" min="0" value="0" class="feed-num-input" /> P</label>
+          <label>열람 가격 <input type="number" id="afeed-unlock" min="0" value="0" class="feed-num-input" /> P (비밀 피드용)</label>
+        </div>
+        <div class="feed-admin-compose-row">
+          <label>예약 발행 <input type="datetime-local" id="afeed-publish" class="feed-num-input" style="width:auto;" /> (비워두면 즉시 발행)</label>
+        </div>
+        <p id="afeed-error" class="xp-error hidden"></p>
+        <button type="button" id="afeed-submit" class="view-btn">피드 등록</button>
+      </div>
+      <div class="shop-section-title" style="margin-top:16px;">전체 피드 (${feeds.length}개, 예약 포함)</div>
+      <div class="feed-list">${listHtml}</div>
+    `;
+    bindAdminNav();
+
+    document.getElementById('afeed-submit').addEventListener('click', async () => {
+      const errorEl = document.getElementById('afeed-error');
+      errorEl.classList.add('hidden');
+      const type = document.getElementById('afeed-type').value;
+      const content = document.getElementById('afeed-content').value.trim();
+      const pointReward = parseInt(document.getElementById('afeed-reward').value, 10) || 0;
+      const unlockPrice = parseInt(document.getElementById('afeed-unlock').value, 10) || 0;
+      const publishAt = document.getElementById('afeed-publish').value || null;
+      if (!content) {
+        errorEl.textContent = '피드 내용을 입력해 주세요.';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+      const r = await fetch('/api/admin/feeds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, content, pointReward, unlockPrice, publishAt }),
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        errorEl.textContent = d.error || '등록에 실패했어요.';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+      renderAdminFeedTab();
+    });
+  } catch (err) {
+    winBody.innerHTML = adminNavHtml() + '<p class="view-msg">불러오지 못했어요.</p>';
+    bindAdminNav();
+  }
+}
+
+// ── 알씨 상점 ─────────────────────────────────────────
+
+async function renderAdminShopTab() {
+  winBody.innerHTML = adminNavHtml() + '<p class="view-loading">불러오는 중...</p>';
+  bindAdminNav();
+  try {
+    const [itemsRes, drawsRes] = await Promise.all([fetch('/api/admin/shop/items'), fetch('/api/admin/gacha/draws')]);
+    const { items } = await itemsRes.json();
+    const { draws } = await drawsRes.json();
+    const prizesHtmlHolder = await buildGachaAdminHtml();
+
+    const itemsHtml = items.length
+      ? items
+          .map(
+            (it) => `
+            <div class="member-row">
+              <div class="member-info">
+                <span class="member-nick">${it.icon || '🎁'} ${escapeHtml(it.name)}</span>
+                <span class="pref-badge pref-top">${SHOP_TYPE_LABEL[it.type] || it.type}</span>
+              </div>
+              <div class="member-note">💰 ${it.price}P ${it.active ? '' : '(비활성)'}</div>
+              <button type="button" class="poke-btn admin-item-toggle" data-id="${it.id}" data-enabled="${it.active ? '0' : '1'}">${it.active ? '끄기' : '켜기'}</button>
+            </div>`
+          )
+          .join('')
+      : '<p class="view-muted">등록된 아이템이 없어요.</p>';
+
+    const drawsHtml = draws.length
+      ? draws
+          .slice(0, 30)
+          .map(
+            (d) => `<div class="member-row"><div class="member-info"><span class="member-nick">${escapeHtml(d.nickname)}</span></div><div class="member-note">${escapeHtml(d.prize_name)}${d.point_reward > 0 ? ` (+${d.point_reward}P)` : ''} · ${formatFeedTime(d.created_at)}</div></div>`
+          )
+          .join('')
+      : '<p class="view-muted">뽑기 기록이 없어요.</p>';
+
+    winBody.innerHTML =
+      adminNavHtml() +
+      `
+      <div class="feed-admin-compose">
+        <div class="feed-admin-compose-title">🎁 새 아이템 등록</div>
+        <select id="ashop-type" class="soribada-select">
+          <option value="gift">선물</option>
+          <option value="anon_note">익명 쪽지</option>
+          <option value="mp3">mp3</option>
+          <option value="magnifier">돋보기</option>
+          <option value="pass">열람권</option>
+          <option value="coin">동전</option>
+          <option value="nameplate">이름표</option>
+          <option value="gacha">뽑기</option>
+        </select>
+        <input type="text" id="ashop-name" class="xp-input" placeholder="아이템 이름" style="margin-top:6px;" />
+        <div class="feed-admin-compose-row">
+          <label>가격 <input type="number" id="ashop-price" min="0" value="0" class="feed-num-input" /> P</label>
+          <label>아이콘(이모지) <input type="text" id="ashop-icon" class="feed-num-input" placeholder="🎁" style="width:50px;" /></label>
+        </div>
+        <p id="ashop-error" class="xp-error hidden"></p>
+        <button type="button" id="ashop-submit" class="view-btn">아이템 등록</button>
+      </div>
+      <div class="shop-section-title" style="margin-top:16px;">아이템 목록</div>
+      <div class="member-list">${itemsHtml}</div>
+
+      <div class="shop-section-title" style="margin-top:20px;">상점 구매 내역 필터 검색</div>
+      <div class="soribada-compose">
+        <div class="feed-admin-compose-row">
+          <input type="text" id="apurch-sender" class="xp-input" placeholder="보낸 사람 닉네임" style="flex:1;" />
+          <input type="text" id="apurch-recipient" class="xp-input" placeholder="받는 사람 닉네임" style="flex:1;" />
+        </div>
+        <select id="apurch-type" class="soribada-select" style="margin-top:6px;">
+          <option value="">전체 종류</option>
+          <option value="gift">선물</option>
+          <option value="anon_note">익명 쪽지</option>
+          <option value="mp3">mp3</option>
+          <option value="magnifier">돋보기</option>
+          <option value="pass">열람권</option>
+          <option value="coin">동전</option>
+          <option value="nameplate">이름표</option>
+          <option value="gacha">뽑기</option>
+        </select>
+        <button type="button" id="apurch-search" class="view-btn" style="margin-top:8px;">검색</button>
+        <div id="apurch-result" style="margin-top:10px;"></div>
+      </div>
+
+      ${prizesHtmlHolder}
+      <div class="shop-section-title" style="margin-top:16px;">뽑기 내역 (최근 30건)</div>
+      <div class="member-list">${drawsHtml}</div>
+    `;
+    bindAdminNav();
+    bindGachaAdmin(renderAdminShopTab);
+
+    document.getElementById('ashop-submit').addEventListener('click', async () => {
+      const errorEl = document.getElementById('ashop-error');
+      errorEl.classList.add('hidden');
+      const type = document.getElementById('ashop-type').value;
+      const name = document.getElementById('ashop-name').value.trim();
+      const price = parseInt(document.getElementById('ashop-price').value, 10) || 0;
+      const icon = document.getElementById('ashop-icon').value.trim();
+      if (!name) {
+        errorEl.textContent = '아이템 이름을 입력해 주세요.';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+      const r = await fetch('/api/admin/shop/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, name, price, icon }),
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        errorEl.textContent = d.error || '등록에 실패했어요.';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+      renderAdminShopTab();
+    });
+
+    document.querySelectorAll('.admin-item-toggle').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        await fetch(`/api/admin/shop/items/${btn.dataset.id}/toggle`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ active: btn.dataset.enabled === '1' }),
+        });
+        renderAdminShopTab();
+      });
+    });
+
+    document.getElementById('apurch-search').addEventListener('click', async () => {
+      const params = new URLSearchParams();
+      const sender = document.getElementById('apurch-sender').value.trim();
+      const recipient = document.getElementById('apurch-recipient').value.trim();
+      const type = document.getElementById('apurch-type').value;
+      if (sender) params.set('senderNickname', sender);
+      if (recipient) params.set('recipientNickname', recipient);
+      if (type) params.set('itemType', type);
+      const resultEl = document.getElementById('apurch-result');
+      resultEl.innerHTML = '<p class="view-loading">검색 중...</p>';
+      const r = await fetch(`/api/admin/shop/purchases?${params.toString()}`);
+      const d = await r.json();
+      resultEl.innerHTML = d.purchases.length
+        ? d.purchases
+            .map(
+              (p) => `
+              <div class="member-row">
+                <div class="member-info"><span class="member-nick">${escapeHtml(p.sender_nickname)} → ${escapeHtml(p.recipient_nickname)}</span></div>
+                <div class="member-note">${SHOP_TYPE_LABEL[p.item_type] || p.item_type}: ${escapeHtml(p.item_name)}${p.message ? ` "${escapeHtml(p.message)}"` : ''} · ${formatFeedTime(p.created_at)}</div>
+              </div>`
+            )
+            .join('')
+        : '<p class="view-muted">결과가 없어요.</p>';
+    });
+  } catch (err) {
+    winBody.innerHTML = adminNavHtml() + '<p class="view-msg">불러오지 못했어요.</p>';
+    bindAdminNav();
+  }
+}
+
+// ── msn ─────────────────────────────────────────
+
+async function renderAdminMsnTab() {
+  winBody.innerHTML = adminNavHtml() + '<p class="view-loading">불러오는 중...</p>';
+  bindAdminNav();
+  try {
+    const res = await fetch('/api/admin/msn/topics');
+    const { topics } = await res.json();
+
+    const topicsHtml = topics.length
+      ? topics
+          .map(
+            (t) => `
+            <div class="feed-card">
+              <div class="feed-card-head">
+                <span class="msn-share-badge ${t.sharing_enabled ? 'on' : 'off'}">${t.sharing_enabled ? '공유 중' : '공유 대기'}</span>
+                <span class="feed-card-time">${formatFeedTime(t.created_at)}</span>
+              </div>
+              <div class="feed-card-content">${escapeHtml(t.content)}</div>
+              <div class="msn-meta">
+                <button type="button" class="ghost-btn-shop amsn-toggle" data-id="${t.id}" data-enabled="${t.sharing_enabled ? '0' : '1'}">${t.sharing_enabled ? '공유 끄기' : '공유 켜기'}</button>
+                <span class="msn-answers-toggle" data-id="${t.id}">답변/대화 보기 (실명)</span>
+              </div>
+              <div class="msn-answers-wrap" id="amsn-detail-${t.id}"></div>
+            </div>`
+          )
+          .join('')
+      : '<p class="view-muted">등록된 주제가 없어요.</p>';
+
+    winBody.innerHTML =
+      adminNavHtml() +
+      `
+      <div class="feed-admin-compose">
+        <div class="feed-admin-compose-title">📝 새 주제 등록</div>
+        <textarea id="amsn-content" class="memo-input feed-new-textarea" placeholder="주제 내용을 입력하세요"></textarea>
+        <div class="feed-admin-compose-row">
+          <label>수정 마감 <input type="datetime-local" id="amsn-deadline" class="feed-num-input" style="width:auto;" /> (선택)</label>
+        </div>
+        <p id="amsn-error" class="xp-error hidden"></p>
+        <button type="button" id="amsn-submit" class="view-btn">주제 등록</button>
+      </div>
+      <div class="shop-section-title" style="margin-top:16px;">전체 주제</div>
+      <div class="feed-list">${topicsHtml}</div>
+    `;
+    bindAdminNav();
+
+    document.getElementById('amsn-submit').addEventListener('click', async () => {
+      const errorEl = document.getElementById('amsn-error');
+      errorEl.classList.add('hidden');
+      const content = document.getElementById('amsn-content').value.trim();
+      const editDeadline = document.getElementById('amsn-deadline').value || null;
+      if (!content) {
+        errorEl.textContent = '주제 내용을 입력해 주세요.';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+      const r = await fetch('/api/admin/msn/topics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, editDeadline }),
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        errorEl.textContent = d.error || '등록에 실패했어요.';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+      renderAdminMsnTab();
+    });
+
+    document.querySelectorAll('.amsn-toggle').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        await fetch(`/api/admin/msn/topics/${btn.dataset.id}/sharing`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: btn.dataset.enabled === '1' }),
+        });
+        renderAdminMsnTab();
+      });
+    });
+
+    document.querySelectorAll('.msn-answers-toggle').forEach((el) => {
+      el.addEventListener('click', async () => {
+        const wrap = document.getElementById(`amsn-detail-${el.dataset.id}`);
+        if (wrap.dataset.loaded === 'true') {
+          wrap.innerHTML = '';
+          wrap.dataset.loaded = 'false';
+          return;
+        }
+        wrap.innerHTML = '<p class="view-loading">불러오는 중...</p>';
+        const [ansRes, thrRes] = await Promise.all([
+          fetch(`/api/admin/msn/topics/${el.dataset.id}/answers`),
+          fetch(`/api/admin/msn/topics/${el.dataset.id}/threads`),
+        ]);
+        const { answers } = await ansRes.json();
+        const { threads } = await thrRes.json();
+        const ansHtml = answers
+          .map((a) => `<div class="msn-answer-row"><span class="msn-answer-tag">${escapeHtml(a.nickname)}</span><div class="msn-answer-text">${escapeHtml(a.content)}</div></div>`)
+          .join('') || '<p class="view-muted">답변 없음</p>';
+        const thrHtml = threads
+          .map(
+            (t) => `
+            <div class="msn-answer-row">
+              <span class="msn-answer-tag">${escapeHtml(t.owner_nickname)} ↔ ${escapeHtml(t.initiator_nickname)}</span>
+              ${t.messages.map((m) => `<div class="msn-answer-text">${escapeHtml(m.sender_nickname)}: ${escapeHtml(m.content)}</div>`).join('')}
+            </div>`
+          )
+          .join('') || '<p class="view-muted">대화 없음</p>';
+        wrap.innerHTML = `<div class="msn-answer-tag">답변</div>${ansHtml}<div class="msn-answer-tag" style="margin-top:6px;">대화</div>${thrHtml}`;
+        wrap.dataset.loaded = 'true';
+      });
+    });
+  } catch (err) {
+    winBody.innerHTML = adminNavHtml() + '<p class="view-msg">불러오지 못했어요.</p>';
+    bindAdminNav();
+  }
+}
+
+// ── 취향표 ─────────────────────────────────────────
+
+async function renderAdminTasteTab() {
+  winBody.innerHTML = adminNavHtml() + '<p class="view-loading">불러오는 중...</p>';
+  bindAdminNav();
+  try {
+    const res = await fetch('/api/admin/taste/questions');
+    const { questions } = await res.json();
+
+    const qHtml = questions.length
+      ? questions
+          .map((q) => `<div class="member-row"><div class="member-info"><span class="member-nick">${escapeHtml(q.question_text)}</span><span class="pref-badge pref-top">${TASTE_TYPE_LABEL[q.question_type] || q.question_type}</span></div></div>`)
+          .join('')
+      : '<p class="view-muted">등록된 질문이 없어요.</p>';
+
+    winBody.innerHTML =
+      adminNavHtml() +
+      `
+      <div class="feed-admin-compose">
+        <div class="feed-admin-compose-title">📝 새 질문 등록</div>
+        <input type="text" id="ataste-question" class="xp-input" placeholder="질문 내용을 입력하세요" />
+        <select id="ataste-type" class="soribada-select" style="margin-top:6px;">
+          <option value="text">서술형</option>
+          <option value="radio">라디오 (하나만 선택)</option>
+          <option value="checkbox">체크박스 (여러 개 선택)</option>
+        </select>
+        <input type="text" id="ataste-options" class="xp-input hidden" placeholder="선택지를 쉼표(,)로 구분해서 입력" style="margin-top:6px;" />
+        <p id="ataste-error" class="xp-error hidden"></p>
+        <button type="button" id="ataste-submit" class="view-btn" style="margin-top:8px;">질문 등록</button>
+      </div>
+      <div class="shop-section-title" style="margin-top:16px;">전체 질문</div>
+      <div class="member-list">${qHtml}</div>
+
+      <div class="shop-section-title" style="margin-top:20px;">특정 회원 취향표 조회 (실명)</div>
+      <div class="soribada-compose">
+        <input type="text" id="ataste-lookup-nick" class="xp-input" placeholder="닉네임 입력" />
+        <button type="button" id="ataste-lookup-btn" class="view-btn" style="margin-top:8px;">조회</button>
+        <div id="ataste-lookup-result" style="margin-top:10px;"></div>
+      </div>
+    `;
+    bindAdminNav();
+
+    const typeSelect = document.getElementById('ataste-type');
+    const optionsInput = document.getElementById('ataste-options');
+    typeSelect.addEventListener('change', () => {
+      optionsInput.classList.toggle('hidden', typeSelect.value === 'text');
+    });
+
+    document.getElementById('ataste-submit').addEventListener('click', async () => {
+      const errorEl = document.getElementById('ataste-error');
+      errorEl.classList.add('hidden');
+      const questionText = document.getElementById('ataste-question').value.trim();
+      const questionType = typeSelect.value;
+      const options = optionsInput.value.split(',').map((s) => s.trim()).filter(Boolean);
+      if (!questionText) {
+        errorEl.textContent = '질문 내용을 입력해 주세요.';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+      if (questionType !== 'text' && options.length < 2) {
+        errorEl.textContent = '선택지를 2개 이상 입력해 주세요.';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+      const r = await fetch('/api/admin/taste/questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionText, questionType, options }),
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        errorEl.textContent = d.error || '등록에 실패했어요.';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+      renderAdminTasteTab();
+    });
+
+    document.getElementById('ataste-lookup-btn').addEventListener('click', async () => {
+      const nickname = document.getElementById('ataste-lookup-nick').value.trim();
+      const resultEl = document.getElementById('ataste-lookup-result');
+      if (!nickname) return;
+      resultEl.innerHTML = '<p class="view-loading">불러오는 중...</p>';
+      const r = await fetch(`/api/admin/taste/${encodeURIComponent(nickname)}`);
+      if (!r.ok) {
+        resultEl.innerHTML = '<p class="view-msg">회원을 찾을 수 없어요.</p>';
+        return;
+      }
+      const { answers } = await r.json();
+      resultEl.innerHTML = answers
+        .map((a) => `<div class="taste-question-row"><div class="taste-question-text">${escapeHtml(a.questionText)}</div><div class="feed-comment-content">${renderAnswerDisplayHtml(a)}</div></div>`)
+        .join('') || '<p class="view-muted">작성된 답변이 없어요.</p>';
+    });
+  } catch (err) {
+    winBody.innerHTML = adminNavHtml() + '<p class="view-msg">불러오지 못했어요.</p>';
+    bindAdminNav();
+  }
+}
+
+// ── 교환일기 ─────────────────────────────────────────
+
+async function renderAdminDiaryTab() {
+  winBody.innerHTML = adminNavHtml() + '<p class="view-loading">불러오는 중...</p>';
+  bindAdminNav();
+  try {
+    const adminBlock = await buildDiaryAdminHtml(renderAdminDiaryTab);
+    winBody.innerHTML = adminNavHtml() + adminBlock;
+    bindAdminNav();
+    bindDiaryAdmin(renderAdminDiaryTab);
+
+    document.querySelectorAll('.diary-pair-view-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const wrap = document.getElementById(`adiary-detail-${btn.dataset.pairId}`);
+        if (wrap.dataset.loaded === 'true') {
+          wrap.innerHTML = '';
+          wrap.dataset.loaded = 'false';
+          return;
+        }
+        wrap.innerHTML = '<p class="view-loading">불러오는 중...</p>';
+        const r = await fetch(`/api/admin/diary/pairs/${btn.dataset.pairId}/entries`);
+        const d = await r.json();
+        const chaptersHtml = d.chapters
+          .map(
+            (c) => `
+            <div class="msn-answer-row">
+              <span class="msn-answer-tag">${c.chapterNumber}장. ${escapeHtml(c.topicText)}</span>
+              <div class="msn-answer-text">${escapeHtml(d.aNickname)}: ${c.aEntry ? escapeHtml(c.aEntry.content) : '(미작성)'}</div>
+              <div class="msn-answer-text">${escapeHtml(d.bNickname)}: ${c.bEntry ? escapeHtml(c.bEntry.content) : '(미작성)'}</div>
+            </div>`
+          )
+          .join('');
+        const finalHtml = d.finalEntries
+          .map((f) => `<div class="msn-answer-text">${escapeHtml(f.nickname)}: ${escapeHtml(f.content)}</div>`)
+          .join('') || '<p class="view-muted">마지막 장 대화 없음</p>';
+        wrap.innerHTML = `${chaptersHtml}<div class="msn-answer-tag" style="margin-top:6px;">✨ 마지막 장</div>${finalHtml}`;
+        wrap.dataset.loaded = 'true';
+      });
+    });
+  } catch (err) {
+    winBody.innerHTML = adminNavHtml() + '<p class="view-msg">불러오지 못했어요.</p>';
+    bindAdminNav();
+  }
+}
+
+// ── 메모장 ─────────────────────────────────────────
+
+async function renderAdminMemoTab() {
+  winBody.innerHTML = adminNavHtml() + '<p class="view-loading">불러오는 중...</p>';
+  bindAdminNav();
+  try {
+    const res = await fetch('/api/admin/memo-notes');
+    const { notes } = await res.json();
+    const listHtml = notes.length
+      ? notes
+          .map(
+            (n) => `
+            <div class="member-row">
+              <div class="member-info"><span class="member-nick">${escapeHtml(n.nickname)} (익명${n.anon_number})</span></div>
+              <div class="member-note">${escapeHtml(n.content)} · ${formatFeedTime(n.created_at)}</div>
+            </div>`
+          )
+          .join('')
+      : '<p class="view-muted">작성된 메모가 없어요.</p>';
+    winBody.innerHTML = adminNavHtml() + `<div class="shop-section-title">메모장 전체 (실명, 최근 200개)</div><div class="member-list">${listHtml}</div>`;
+    bindAdminNav();
+  } catch (err) {
+    winBody.innerHTML = adminNavHtml() + '<p class="view-msg">불러오지 못했어요.</p>';
+    bindAdminNav();
+  }
+}
+
+// ── 소리바다 ─────────────────────────────────────────
+
+async function renderAdminSoribadaTab() {
+  winBody.innerHTML = adminNavHtml() + '<p class="view-loading">불러오는 중...</p>';
+  bindAdminNav();
+  try {
+    const res = await fetch('/api/admin/soribada-tracks');
+    const { tracks } = await res.json();
+    const listHtml = tracks.length
+      ? tracks
+          .map(
+            (t) => `
+            <div class="member-row">
+              <div class="member-info"><span class="member-nick">${escapeHtml(t.sender_nickname || '?')} → ${escapeHtml(t.recipient_nickname)}</span></div>
+              <div class="member-note">${escapeHtml(t.title)}.mp3 · ${formatFeedTime(t.created_at)}</div>
+            </div>`
+          )
+          .join('')
+      : '<p class="view-muted">등록된 트랙이 없어요.</p>';
+    winBody.innerHTML = adminNavHtml() + `<div class="shop-section-title">소리바다 전체 (실명)</div><div class="member-list">${listHtml}</div>`;
+    bindAdminNav();
+  } catch (err) {
+    winBody.innerHTML = adminNavHtml() + '<p class="view-msg">불러오지 못했어요.</p>';
+    bindAdminNav();
   }
 }
 
@@ -2166,6 +2887,7 @@ function switchView(view, label) {
   else if (view === 'msn') { msnSubTab = 'topics'; renderMsnView(); }
   else if (view === 'taste') renderTasteView();
   else if (view === 'diary') renderDiaryView();
+  else if (view === 'admin') { adminTab = 'members'; renderAdminView(); }
   else if (view === 'placeholder') renderPlaceholderView(label);
   else renderHomeView();
 }

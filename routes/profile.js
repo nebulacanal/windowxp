@@ -15,7 +15,7 @@ function requireLogin(req, res, next) {
 router.get('/me', requireLogin, (req, res) => {
   const user = db
     .prepare(
-      `SELECT nickname, preference, curriculum_gay, curriculum_lesbian, profile_note, points, created_at
+      `SELECT nickname, preference, curriculum_gay, curriculum_lesbian, profile_note, profile_image_url, points, created_at
        FROM users WHERE id = ?`
     )
     .get(req.session.userId);
@@ -29,24 +29,34 @@ router.get('/me', requireLogin, (req, res) => {
       curriculumLesbian: !!user.curriculum_lesbian,
       badge: getBadgeLabel(user.preference, user.curriculum_gay, user.curriculum_lesbian),
       profile_note: user.profile_note,
+      profileImageUrl: user.profile_image_url || '',
       points: user.points,
       created_at: user.created_at,
     },
   });
 });
 
-// 내 문서(자기소개) 수정
+// 내 문서(자기소개) 및/또는 프로필 사진 수정
 router.put('/me', requireLogin, (req, res) => {
-  const { profileNote } = req.body;
+  const { profileNote, profileImageUrl } = req.body;
 
-  if (typeof profileNote !== 'string') {
-    return res.status(400).json({ error: 'profileNote 값이 필요해요.' });
-  }
-  if (profileNote.length > 500) {
-    return res.status(400).json({ error: '자기소개는 500자를 넘을 수 없어요.' });
+  if (profileNote !== undefined) {
+    if (typeof profileNote !== 'string') {
+      return res.status(400).json({ error: 'profileNote 값이 올바르지 않아요.' });
+    }
+    if (profileNote.length > 500) {
+      return res.status(400).json({ error: '자기소개는 500자를 넘을 수 없어요.' });
+    }
+    db.prepare('UPDATE users SET profile_note = ? WHERE id = ?').run(profileNote, req.session.userId);
   }
 
-  db.prepare('UPDATE users SET profile_note = ? WHERE id = ?').run(profileNote, req.session.userId);
+  if (profileImageUrl !== undefined) {
+    if (typeof profileImageUrl !== 'string' || profileImageUrl.length > 1000) {
+      return res.status(400).json({ error: '이미지 주소가 올바르지 않아요.' });
+    }
+    db.prepare('UPDATE users SET profile_image_url = ? WHERE id = ?').run(profileImageUrl, req.session.userId);
+  }
+
   res.json({ ok: true });
 });
 

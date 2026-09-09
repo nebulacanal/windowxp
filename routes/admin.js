@@ -9,6 +9,7 @@ const gacha = require('../db/gacha');
 const msn = require('../db/msn');
 const taste = require('../db/taste');
 const menuSettings = require('../db/menuSettings');
+const ads = require('../db/ads');
 const diary = require('../db/diary');
 const { getBadgeLabel } = require('../db/badge');
 
@@ -323,6 +324,22 @@ router.post('/menus/:key', requireAdmin, (req, res) => {
   } catch (err) {
     if (err.code === 'INVALID_MENU') return res.status(400).json({ error: err.message });
     res.status(500).json({ error: '설정 변경에 실패했어요.' });
+  }
+});
+
+// 광고 배너 설정
+router.get('/ads', requireAdmin, (req, res) => {
+  res.json({ banners: ads.getAllBanners() });
+});
+
+router.post('/ads/:slot', requireAdmin, (req, res) => {
+  const { imageUrl, linkUrl } = req.body;
+  try {
+    ads.setBanner(req.params.slot, { imageUrl, linkUrl });
+    res.json({ ok: true });
+  } catch (err) {
+    if (err.code === 'INVALID_SLOT') return res.status(400).json({ error: err.message });
+    res.status(500).json({ error: '저장에 실패했어요.' });
   }
 });
 

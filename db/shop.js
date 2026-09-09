@@ -173,6 +173,40 @@ function listMyReceivedItems(userId) {
   }));
 }
 
+// 내가 구매(전송)한 아이템 전체 (보낸 대상 포함, 나 자신용 아이템은 대상 없이 표시)
+function listMyPurchases(userId, limit = 50) {
+  return db
+    .prepare(
+      `SELECT ip.id, ip.item_type, ip.item_name, ip.created_at, ip.recipient_user_id,
+              recipient.nickname AS recipient_nickname
+       FROM item_purchases ip JOIN users recipient ON recipient.id = ip.recipient_user_id
+       WHERE ip.buyer_user_id = ?
+       ORDER BY ip.id DESC LIMIT ?`
+    )
+    .all(userId, limit)
+    .map((r) => ({
+      id: r.id,
+      type: r.item_type,
+      itemName: r.item_name,
+      recipientNickname: r.recipient_user_id === userId ? null : r.recipient_nickname,
+      isSelf: r.recipient_user_id === userId,
+      createdAt: r.created_at,
+    }));
+}
+
+// 내가 사용(소모)한 아이템 내역 (돋보기/열람권/이름표 등 used=1 처리된 것들)
+function listMyUsedItems(userId, limit = 50) {
+  return db
+    .prepare(
+      `SELECT id, item_type, item_name, created_at
+       FROM item_purchases
+       WHERE buyer_user_id = ? AND used = 1
+       ORDER BY id DESC LIMIT ?`
+    )
+    .all(userId, limit)
+    .map((r) => ({ id: r.id, type: r.item_type, itemName: r.item_name, createdAt: r.created_at }));
+}
+
 // 내가 보유한(아직 안 쓴) 돋보기 개수
 function countUnusedMagnifiers(userId) {
   const row = db
@@ -313,6 +347,8 @@ module.exports = {
   setItemActive,
   purchaseItem,
   listMyReceivedItems,
+  listMyPurchases,
+  listMyUsedItems,
   countUnusedMagnifiers,
   countUnusedPasses,
   consumePass,
