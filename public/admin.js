@@ -47,13 +47,54 @@ async function render() {
     <div id="pending-list"><p>불러오는 중...</p></div>
     <div class="section-title">전체 사용자</div>
     <div id="user-list"><p>불러오는 중...</p></div>
+    <div class="section-title">메뉴 노출 설정</div>
+    <div id="menu-settings"><p>불러오는 중...</p></div>
   `;
 
-  await Promise.all([renderPending(), renderAllUsers()]);
+  await Promise.all([renderPending(), renderAllUsers(), renderMenuSettings()]);
 }
 
-function preferenceLabel(p) {
-  return p === 'top' ? '탑' : p === 'bottom' ? '바텀' : '';
+const MENU_LABELS = {
+  memo: '📝 메모장',
+  shop: '💿 알씨 (상점)',
+  soribada: '🎵 소리바다',
+  feed: '🌐 IE (피드)',
+  msn: '💬 msn (블라인드)',
+  taste: 'ℹ️ 취향표',
+  diary: '💌 교환일기',
+};
+
+async function renderMenuSettings() {
+  const target = document.getElementById('menu-settings');
+  const res = await fetch('/api/admin/menus');
+  if (!res.ok) {
+    target.innerHTML = `<p class="empty-note">불러오지 못했어요.</p>`;
+    return;
+  }
+  const { menus } = await res.json();
+
+  target.innerHTML = Object.entries(menus)
+    .map(
+      ([key, enabled]) => `
+      <div class="user-row">
+        <div class="nickname">${MENU_LABELS[key] || key}</div>
+        <label class="menu-toggle">
+          <input type="checkbox" data-key="${key}" ${enabled ? 'checked' : ''} onchange="toggleMenu(this)">
+          <span>${enabled ? '켜짐' : '꺼짐'}</span>
+        </label>
+      </div>`
+    )
+    .join('');
+}
+
+async function toggleMenu(el) {
+  const key = el.dataset.key;
+  await fetch(`/api/admin/menus/${key}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled: el.checked }),
+  });
+  renderMenuSettings();
 }
 
 async function renderPending() {
@@ -75,7 +116,7 @@ async function renderPending() {
       (u) => `
       <div class="user-row" id="row-${u.id}">
         <div>
-          <div class="nickname">${escapeHtml(u.nickname)} <span class="status-badge status-pending">${preferenceLabel(u.preference)}</span></div>
+          <div class="nickname">${escapeHtml(u.nickname)} <span class="status-badge status-pending">${escapeHtml(u.badge)}</span></div>
           <div class="meta">신청일: ${formatDate(u.created_at)}</div>
         </div>
         <div class="btn-group">
@@ -104,10 +145,10 @@ async function renderAllUsers() {
       return `
       <div class="user-row">
         <div>
-          <div class="nickname">${escapeHtml(u.nickname)} ${u.is_admin ? '👑' : ''} (${preferenceLabel(u.preference)})
+          <div class="nickname">${escapeHtml(u.nickname)} ${u.is_admin ? '👑' : ''} (${escapeHtml(u.badge)})
             <span class="status-badge ${badgeClass}">${badgeLabel}</span>
           </div>
-          <div class="meta">가입: ${formatDate(u.created_at)}</div>
+          <div class="meta">가입: ${formatDate(u.created_at)} · 포인트: ${u.points}</div>
         </div>
       </div>`;
     })

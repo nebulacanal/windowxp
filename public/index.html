@@ -84,8 +84,13 @@
                 <span class="xp-field-spacer"></span>
               </div>
               <div class="pref-row">
-                <label class="pref-option"><input type="radio" name="pref" value="top" /><span>탑</span></label>
-                <label class="pref-option"><input type="radio" name="pref" value="bottom" /><span>바텀</span></label>
+                <label class="pref-option"><input type="radio" name="pref" value="top" /><span>탑부치</span></label>
+                <label class="pref-option"><input type="radio" name="pref" value="bottom" /><span>바텀팸</span></label>
+                <span class="xp-field-spacer"></span>
+              </div>
+              <div class="pref-row">
+                <label class="pref-option"><input type="checkbox" name="curriculum" value="gay" /><span>게이</span></label>
+                <label class="pref-option"><input type="checkbox" name="curriculum" value="lesbian" /><span>레즈비언</span></label>
                 <span class="xp-field-spacer"></span>
               </div>
               <div class="xp-field-row">
@@ -135,7 +140,7 @@
   <div class="window-cluster">
     <div class="window-side-menu">
       <!-- 내 컴퓨터 -->
-      <div class="desktop-icon" tabindex="0">
+      <div class="desktop-icon" tabindex="0" data-view="my-computer">
         <svg class="icon-glyph" viewBox="0 0 40 40">
           <rect x="6" y="5" width="24" height="16" rx="1.5" fill="#8DACED" stroke="#173EBF" stroke-width="1.6"/>
           <rect x="9" y="8" width="18" height="10" fill="#E8F0FF"/>
@@ -147,7 +152,7 @@
         <div class="icon-label">내 컴퓨터</div>
       </div>
       <!-- 내 문서 -->
-      <div class="desktop-icon" tabindex="0">
+      <div class="desktop-icon" tabindex="0" data-view="my-documents">
         <svg class="icon-glyph" viewBox="0 0 40 40">
           <path d="M4 11h11l3 3h18v18H4Z" fill="#FFD36E" stroke="#8A5A00" stroke-width="1.6" stroke-linejoin="round"/>
           <path d="M4 11 4 8h9l3 3" fill="none" stroke="#8A5A00" stroke-width="1.6" stroke-linejoin="round"/>
@@ -155,7 +160,7 @@
         <div class="icon-label">내 문서</div>
       </div>
       <!-- 메모장 -->
-      <div class="desktop-icon" tabindex="0">
+      <div class="desktop-icon" tabindex="0" data-view="memo" data-label="메모장">
         <svg class="icon-glyph" viewBox="0 0 40 40">
           <path d="M9 4h16l6 6v26H9Z" fill="#fff" stroke="#7C86A0" stroke-width="1.6" stroke-linejoin="round"/>
           <path d="M25 4v6h6" fill="none" stroke="#7C86A0" stroke-width="1.6" stroke-linejoin="round"/>
@@ -166,7 +171,7 @@
         <div class="icon-label">메모장</div>
       </div>
       <!-- 알씨 -->
-      <div class="desktop-icon" tabindex="0">
+      <div class="desktop-icon" tabindex="0" data-view="shop" data-label="알씨">
         <svg class="icon-glyph" viewBox="0 0 40 40">
           <ellipse cx="20" cy="23" rx="10.5" ry="12.5" fill="#F7DDBC" stroke="#D9B98C" stroke-width="1"/>
           <circle cx="7.5" cy="21" r="4.3" fill="#F7DDBC" stroke="#D9B98C" stroke-width="1"/>
@@ -181,7 +186,7 @@
         <div class="icon-label">알씨</div>
       </div>
       <!-- 소리바다 -->
-      <div class="desktop-icon" tabindex="0">
+      <div class="desktop-icon" tabindex="0" data-view="soribada" data-label="소리바다">
         <svg class="icon-glyph" viewBox="0 0 40 40">
           <circle cx="20" cy="20" r="16" fill="#5AA7E8" stroke="#173EBF" stroke-width="1.6"/>
           <g transform="translate(-1.3,1.3)">
@@ -194,20 +199,56 @@
         </svg>
         <div class="icon-label">소리바다</div>
       </div>
-      <!-- 휴지통 -->
-      <div class="desktop-icon" tabindex="0">
+      <!-- msn (블라인드) -->
+      <div class="desktop-icon" tabindex="0" data-view="msn" data-label="msn">
         <svg class="icon-glyph" viewBox="0 0 40 40">
-          <path d="M11 12h18l-1.6 20a2 2 0 0 1-2 1.8H14.6a2 2 0 0 1-2-1.8Z" fill="#C9D2E0" stroke="#5A6480" stroke-width="1.6" stroke-linejoin="round"/>
-          <rect x="8" y="8" width="24" height="4" rx="1" fill="#8A97B8" stroke="#5A6480" stroke-width="1.4"/>
-          <rect x="16" y="4" width="8" height="4" rx="1" fill="#8A97B8" stroke="#5A6480" stroke-width="1.4"/>
-          <line x1="16" y1="16" x2="17" y2="29" stroke="#5A6480" stroke-width="1.3"/>
-          <line x1="20" y1="16" x2="20" y2="29" stroke="#5A6480" stroke-width="1.3"/>
-          <line x1="24" y1="16" x2="23" y2="29" stroke="#5A6480" stroke-width="1.3"/>
+          <defs>
+            <linearGradient id="msnGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#8FE3A0" />
+              <stop offset="100%" stop-color="#2FA85A" />
+            </linearGradient>
+          </defs>
+          <path d="M8 8c9-5 15-5 24 0 2 7 2 15 0 22-9 5-15 5-24 0-2-7-2-15 0-22Z" fill="url(#msnGrad)" stroke="#1F6B3A" stroke-width="1.4"/>
+          <circle cx="16" cy="18" r="2.6" fill="#fff"/>
+          <circle cx="24" cy="18" r="2.6" fill="#fff"/>
+          <path d="M14 25c2.5 2 9.5 2 12 0" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round"/>
         </svg>
-        <div class="icon-label">휴지통</div>
+        <div class="icon-label">msn</div>
+      </div>
+      <!-- 취향표 -->
+      <div class="desktop-icon" tabindex="0" data-view="taste" data-label="취향표">
+        <svg class="icon-glyph" viewBox="0 0 40 40">
+          <defs>
+            <linearGradient id="infoGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#5AA7E8" />
+              <stop offset="100%" stop-color="#173EBF" />
+            </linearGradient>
+          </defs>
+          <path d="M11 26 L9 34 L18 27 Z" fill="url(#infoGrad)" stroke="#0E3E93" stroke-width="1" stroke-linejoin="round"/>
+          <rect x="5" y="5" width="30" height="23" rx="8" fill="url(#infoGrad)" stroke="#0E3E93" stroke-width="1.4"/>
+          <circle cx="20" cy="11.5" r="2.3" fill="#fff"/>
+          <rect x="17.7" y="15.5" width="4.6" height="9" rx="2.2" fill="#fff"/>
+        </svg>
+        <div class="icon-label">취향표</div>
+      </div>
+      <!-- 교환일기 -->
+      <div class="desktop-icon" tabindex="0" data-view="diary" data-label="교환일기">
+        <svg class="icon-glyph" viewBox="0 0 40 40">
+          <defs>
+            <linearGradient id="diaryGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#F49CC4" />
+              <stop offset="100%" stop-color="#B8447A" />
+            </linearGradient>
+          </defs>
+          <rect x="7" y="4" width="24" height="32" rx="2.5" fill="url(#diaryGrad)" stroke="#8A1F49" stroke-width="1.4"/>
+          <rect x="7" y="4" width="6" height="32" rx="2.5" fill="#8A1F49" opacity="0.35"/>
+          <rect x="17" y="2.5" width="6" height="8" fill="#F4A93C" stroke="#8A5A00" stroke-width="1"/>
+          <path d="M20 20.5c-2.2-2.6-6.8-1.4-6.8 2 0 3 3.7 5.4 6.8 8 3.1-2.6 6.8-5 6.8-8 0-3.4-4.6-4.6-6.8-2Z" fill="#fff" stroke="#8A1F49" stroke-width="1.1" stroke-linejoin="round"/>
+        </svg>
+        <div class="icon-label">교환일기</div>
       </div>
       <!-- Internet Explorer -->
-      <div class="desktop-icon" tabindex="0">
+      <div class="desktop-icon" tabindex="0" data-view="feed" data-label="IE (피드)">
         <svg class="icon-glyph" viewBox="0 0 40 40">
           <defs>
             <linearGradient id="ieGrad" x1="0" y1="0" x2="1" y2="1">
@@ -224,16 +265,17 @@
     <div class="main-window">
       <div class="win-titlebar">
         <svg class="title-icon" viewBox="0 0 48 48"><defs><clipPath id="titleFlagClip"><path d="M2 11 C 9 5 18 5 24 8 C 30 12 39 9 46 11 L46 37 C 39 40 30 36 24 40 C 18 44 9 43 2 37 Z" /></clipPath></defs><g clip-path="url(#titleFlagClip)"><rect x="0" y="0" width="24" height="24" fill="#F4A93C"/><rect x="24" y="0" width="24" height="24" fill="#7CC576"/><rect x="0" y="24" width="24" height="24" fill="#5AA7E8"/><rect x="24" y="24" width="24" height="24" fill="#E86A6A"/></g></svg>
-        <span class="title-text">7979 - 메인 메뉴</span>
+        <span class="title-text" id="win-title-text">7979 - 메인 메뉴</span>
         <div class="win-controls">
           <div class="win-btn min">–</div>
           <div class="win-btn max">□</div>
           <div class="win-btn close" id="logout-btn" title="로그아웃">✕</div>
         </div>
       </div>
-      <div class="win-body">
+      <div class="win-body" id="win-body">
         <div class="win-welcome">
           <div class="nick"><span id="welcome-nickname"></span> 님 환영해요</div>
+          <div class="points-badge">💰 <span id="welcome-points">0</span> P</div>
           <div class="desc">왼쪽 아이콘에서 게시판·채팅·공지사항·투표로 이동할 수 있어요.</div>
           <a href="/admin.html" id="admin-link" class="admin-link hidden">관리자 페이지 →</a>
         </div>
@@ -312,6 +354,29 @@
           <rect x="1.5" y="1.5" width="21" height="21" rx="5" fill="url(#btBadge)" stroke="#0E3E93" stroke-width="1"/>
           <path fill-rule="evenodd" clip-rule="evenodd" transform="translate(0.6,0)" d="M17.71 7.71L12 2h-1v7.59L6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 11 14.41V22h1l5.71-5.71-4.3-4.29 4.3-4.29zM13 5.83l1.88 1.88L13 9.59V5.83zm1.88 10.46L13 18.17v-3.76l1.88 1.88z" fill="#3ED67A"/>
         </svg>
+        <div class="notif-bell-wrap" id="notif-bell-wrap">
+          <svg class="notif-bell" viewBox="0 0 20 20" fill="none">
+            <defs>
+              <linearGradient id="bellGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#FFE38A" />
+                <stop offset="100%" stop-color="#E0A62E" />
+              </linearGradient>
+            </defs>
+            <path d="M10 3c-3 0-4.6 2.2-4.6 5v2.6L4 13.5h12l-1.4-2.9V8c0-2.8-1.6-5-4.6-5Z" fill="url(#bellGrad)" stroke="#8A6300" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M8.3 13.5a1.7 1.7 0 0 0 3.4 0" stroke="#8A6300" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+          </svg>
+          <span class="notif-badge hidden" id="notif-badge">0</span>
+          <div class="notif-panel hidden" id="notif-panel">
+            <div class="notif-panel-header">
+              <span class="notif-panel-title">알림</span>
+              <div class="notif-panel-actions">
+                <span id="notif-mark-all">모두 읽음</span>
+                <span id="notif-delete-all">모두 삭제</span>
+              </div>
+            </div>
+            <div class="notif-panel-list" id="notif-panel-list"></div>
+          </div>
+        </div>
       </div>
       <span id="clock">00:00</span>
     </div>

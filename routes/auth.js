@@ -26,14 +26,25 @@ function validatePassword(password) {
 
 function validatePreference(preference) {
   if (preference !== 'top' && preference !== 'bottom') {
-    return '성향(탑/바텀)을 선택해 주세요.';
+    return '성향(탑부치/바텀팸)을 선택해 주세요.';
+  }
+  return null;
+}
+
+function validateCurriculum(curriculum) {
+  if (!Array.isArray(curriculum) || curriculum.length === 0) {
+    return '커리큘럼(게이/레즈비언)을 하나 이상 선택해 주세요.';
+  }
+  const valid = curriculum.every((c) => c === 'gay' || c === 'lesbian');
+  if (!valid) {
+    return '커리큘럼 값이 올바르지 않아요.';
   }
   return null;
 }
 
 // 회원가입 (관리자 승인 전까지는 로그인 불가한 대기 상태로 생성)
 router.post('/signup', (req, res) => {
-  const { nickname, password, preference } = req.body;
+  const { nickname, password, preference, curriculum } = req.body;
 
   const nicknameError = validateNickname(nickname);
   if (nicknameError) return res.status(400).json({ error: nicknameError });
@@ -44,15 +55,22 @@ router.post('/signup', (req, res) => {
   const preferenceError = validatePreference(preference);
   if (preferenceError) return res.status(400).json({ error: preferenceError });
 
+  const curriculumError = validateCurriculum(curriculum);
+  if (curriculumError) return res.status(400).json({ error: curriculumError });
+
   const existing = db.prepare('SELECT id FROM users WHERE nickname = ?').get(nickname);
   if (existing) {
     return res.status(409).json({ error: '이미 사용 중인 닉네임이에요.' });
   }
 
+  const curriculumGay = curriculum.includes('gay') ? 1 : 0;
+  const curriculumLesbian = curriculum.includes('lesbian') ? 1 : 0;
+
   const passwordHash = bcrypt.hashSync(password, 10);
   db.prepare(
-    "INSERT INTO users (nickname, password_hash, preference, status) VALUES (?, ?, ?, 'pending')"
-  ).run(nickname, passwordHash, preference);
+    `INSERT INTO users (nickname, password_hash, preference, curriculum_gay, curriculum_lesbian, status)
+     VALUES (?, ?, ?, ?, ?, 'pending')`
+  ).run(nickname, passwordHash, preference, curriculumGay, curriculumLesbian);
 
   // 승인 전에는 세션을 만들지 않습니다 (바로 로그인시키지 않음).
   res.status(201).json({
@@ -85,7 +103,7 @@ router.post('/login', (req, res) => {
   req.session.nickname = user.nickname;
   req.session.isAdmin = !!user.is_admin;
 
-  res.json({ nickname: user.nickname, isAdmin: !!user.is_admin });
+  res.json({ nickname: user.nickname, isAdmin: !!user.is_admin, points: user.points });
 });
 
 // 로그아웃
@@ -99,7 +117,12 @@ router.post('/logout', (req, res) => {
 // 현재 로그인 상태 확인
 router.get('/me', (req, res) => {
   if (req.session && req.session.nickname) {
-    return res.json({ nickname: req.session.nickname, isAdmin: !!req.session.isAdmin });
+    const user = db.prepare('SELECT points FROM users WHERE id = ?').get(req.session.userId);
+    return res.json({
+      nickname: req.session.nickname,
+      isAdmin: !!req.session.isAdmin,
+      points: user ? user.points : 0,
+    });
   }
   res.status(401).json({ error: '로그인이 필요해요.' });
 });
