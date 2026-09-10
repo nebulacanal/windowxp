@@ -136,11 +136,11 @@ html, body { margin: 0; height: 100%; font-family: var(--font); }
 .xp-arrow-btn:hover { filter: brightness(1.08); }
 .xp-arrow-btn:active { filter: brightness(0.92); }
 
-.pref-row { display: flex; gap: 8px; margin-bottom: 6px; }
+.pref-row { display: flex; gap: 6px; margin-bottom: 6px; }
 .pref-option {
-  flex: 1; display: flex; align-items: center; gap: 6px;
-  border: 1px solid #2C5AA0; border-radius: 3px; padding: 6px 9px; background: #fff;
-  font-size: 13px; cursor: pointer; color: #123;
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px;
+  border: 1px solid #2C5AA0; border-radius: 3px; padding: 6px 4px; background: #fff;
+  font-size: 12.5px; cursor: pointer; color: #123;
   box-shadow: inset 1px 1px 2px rgba(0,0,0,0.15);
   transition: background 0.15s, border-color 0.15s;
 }
@@ -368,10 +368,15 @@ html, body { margin: 0; height: 100%; font-family: var(--font); }
 .member-info { display: flex; flex-direction: column; align-items: flex-start; min-width: 80px; gap: 3px; }
 .member-nick { font-weight: 700; font-size: 13.5px; color: #16327A; }
 .pref-badge {
-  font-size: 10.5px; font-weight: 700; padding: 1px 8px; border-radius: 999px;
+  font-size: 9px; font-weight: 400; padding: 1px 7px; border-radius: 999px;
 }
-.pref-badge.pref-top { background: #FFE8D2; color: #B85A00; }
-.pref-badge.pref-bottom { background: #DCEBFF; color: #1257B0; }
+.badge-group { display: inline-flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.pref-badge.pref-top { background: #A290B7; color: #51485B; }
+.pref-badge.pref-bottom { background: #B0CDE6; color: #1A3A66; }
+.pref-badge.pref-butch { background: #FF7F50; color: #7F3F28; }
+.pref-badge.pref-femme { background: #FFD166; color: #7A5900; }
+.pref-badge.curriculum-gay { background: #99E8C2; color: #146A45; }
+.pref-badge.curriculum-lesbian { background: #D362A4; color: #693152; }
 .member-note { flex: 1; font-size: 12.5px; color: #5A6C94; line-height: 1.4; }
 .poke-btn {
   flex-shrink: 0; border: 1px solid #E86A6A; border-radius: 999px; background: #FFECEC; color: #C23A2C;
@@ -618,19 +623,21 @@ html, body { margin: 0; height: 100%; font-family: var(--font); }
   display: block; border-radius: 8px; overflow: hidden; border: 1px solid #D7E0F5;
   background: #EDF1FA;
 }
-.ad-banner-large img { width: 100%; height: 90px; object-fit: cover; display: block; }
+.ad-banner-large img { width: 100%; height: 180px; object-fit: cover; display: block; }
 .ad-banner-row { display: flex; gap: 8px; }
 .ad-banner-small { flex: 1; }
-.ad-banner-small img { width: 100%; height: 56px; object-fit: cover; display: block; }
+.ad-banner-small img { width: 100%; height: 90px; object-fit: cover; display: block; }
 
 /* 내 컴퓨터 - 프로필 카드 */
 .profile-card {
   display: flex; gap: 16px; background: #fff; border: 1px solid #D7E0F5; border-radius: 10px;
   padding: 1rem; margin-bottom: 20px;
 }
-.profile-photo-wrap { position: relative; flex-shrink: 0; }
+.profile-photo-wrap { position: relative; flex-shrink: 0; cursor: pointer; }
 .profile-photo-box {
-  width: 96px; height: 96px; border: 2px solid #B9C6E6; border-radius: 8px; background: #F5F8FF;
+  width: 96px; height: 96px; border: 2px solid #B9C6E6; border-radius: 8px; background: #C7D4EE;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 40px; font-weight: 700; color: #8A9BD4;
 }
 .profile-photo-edit-btn {
   position: absolute; bottom: -6px; right: -6px; width: 24px; height: 24px; border-radius: 50%;
@@ -638,8 +645,16 @@ html, body { margin: 0; height: 100%; font-family: var(--font); }
   cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 .profile-photo-edit-btn:hover { background: #F0F4FF; }
-.profile-card-info { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 8px; min-width: 0; }
+.profile-card-info { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 10px; min-width: 0; }
+.profile-card-nick-row { display: flex; align-items: center; gap: 8px; }
 .profile-card-nick { font-size: 16px; font-weight: 700; color: #16327A; }
+.profile-card-boxes { display: flex; gap: 8px; }
+.profile-card-box {
+  border: 1px solid #E5EAF7; border-radius: 8px; background: #F8FAFF; padding: 0.9rem 1rem;
+  display: flex; flex-direction: column; justify-content: center; flex: 1; min-width: 0;
+}
+.profile-points-box { align-items: flex-start; justify-content: center; }
+.profile-intro-box { flex: 1; min-width: 0; }
 .profile-card-intro-row { display: flex; align-items: center; gap: 8px; }
 .profile-card-intro { font-size: 12.5px; color: #4C5F91; line-height: 1.4; flex: 1; word-break: break-word; }
 .profile-intro-edit-btn {
@@ -647,19 +662,52 @@ html, body { margin: 0; height: 100%; font-family: var(--font); }
   display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
 }
 .profile-intro-edit-btn:hover { background: #E0E9FF; }
-.profile-card-bottom-row { display: flex; align-items: center; gap: 10px; }
-.profile-card-points { font-size: 13px; font-weight: 700; color: #B8860B; }
+.profile-card-points-main { font-size: 19px; font-weight: 700; color: #B8860B; white-space: nowrap; text-align: left; }
+.profile-card-points-emoji { font-size: 13px; }
+.profile-card-points-label { font-size: 10.5px; color: #96A4C4; text-align: left; margin-top: 3px; }
+.profile-card-intro { font-size: 11.5px; }
 
-/* 내 컴퓨터 - 드라이브 스타일 아이템 목록 */
-.drive-section { margin-bottom: 18px; }
-.drive-section-title {
-  display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #16327A;
-  margin-bottom: 8px;
+/* 내 컴퓨터 - 장치 및 드라이브 (윈도우 탐색기 스타일) */
+.drive-big-box {
+  background: #fff; border: 1px solid #D7E0F5; border-radius: 10px; padding: 1rem; margin-bottom: 20px;
 }
-.drive-item-list { display: flex; flex-direction: column; gap: 6px; }
-.drive-item-row {
-  display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #E5EAF7;
-  border-radius: 6px; padding: 0.45rem 0.7rem; font-size: 12px;
+.drive-devices-header {
+  display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: #4C5F91;
+  cursor: pointer; user-select: none; margin-bottom: 10px;
 }
-.drive-item-type { font-weight: 700; color: #4C5F91; flex-shrink: 0; }
-.drive-item-name { flex: 1; color: #2A3A5F; word-break: break-word; }
+.drive-devices-rule { border-bottom: 1px solid #D7E0F5; margin-bottom: 12px; }
+.drive-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.drive-tile {
+  padding: 0.7rem 0.8rem; cursor: pointer; border-radius: 8px;
+}
+.drive-tile:hover { background: #F0F4FF; }
+
+.drive-header { display: flex; align-items: center; gap: 12px; }
+.drive-icon-wrap { flex-shrink: 0; }
+.drive-header-text { flex: 1; min-width: 0; }
+.drive-header-label { font-size: 13px; font-weight: 700; color: #16327A; margin-bottom: 4px; }
+.drive-usage-bar-track { height: 7px; border-radius: 4px; background: #E5EAF7; overflow: hidden; margin-bottom: 4px; }
+.drive-usage-bar-fill { height: 100%; border-radius: 4px; }
+.drive-header-sub { font-size: 11px; color: #96A4C4; }
+
+.drive-breadcrumb { font-size: 12.5px; font-weight: 700; color: #4C5F91; cursor: pointer; margin-bottom: 10px; display: inline-block; }
+.drive-breadcrumb:hover .drive-breadcrumb-link { text-decoration: underline; }
+.drive-breadcrumb-link { color: #4C5F91; }
+
+/* 아이템 아이콘 그리드 (바탕화면 폴더 느낌) */
+.dgrid-wrap {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 24px 18px; max-height: 320px; overflow-y: auto; padding: 6px;
+}
+.dgrid-tile {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 0.5rem 0.3rem; border-radius: 6px; cursor: default; text-align: center;
+}
+.dgrid-tile.mycomp-reveal-btn { cursor: pointer; }
+.dgrid-tile:hover { background: #F0F4FF; }
+.dgrid-icon { font-size: 26px; line-height: 1; }
+.dgrid-name {
+  font-size: 11px; color: #2A3A5F; line-height: 1.3; word-break: break-word;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.dgrid-empty { grid-column: 1 / -1; text-align: center; padding: 1.5rem 0; }

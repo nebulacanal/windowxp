@@ -1,5 +1,7 @@
+const PREFERENCE_LABELS = { top: '탑', bottom: '바텀', butch: '부치', femme: '팸' };
+
 function getPreferenceLabel(preference) {
-  return preference === 'top' ? '탑부치' : '바텀팸';
+  return PREFERENCE_LABELS[preference] || preference;
 }
 
 function getCurriculumLabel(curriculumGay, curriculumLesbian) {

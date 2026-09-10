@@ -22,11 +22,16 @@ const adsRouter = require('./routes/ads');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
+// 렌더(Render) 같은 리버스 프록시 뒤에서 https/쿠키가 올바르게 인식되도록
+app.set('trust proxy', 1);
+
+app.use(express.json({ limit: '3mb' }));
+
+const SESSION_DB_DIR = process.env.DB_DIR || path.join(__dirname, 'db');
 
 app.use(
   session({
-    store: new SQLiteStore({ db: 'sessions.sqlite', dir: path.join(__dirname, 'db') }),
+    store: new SQLiteStore({ db: 'sessions.sqlite', dir: SESSION_DB_DIR }),
     secret: process.env.SESSION_SECRET || 'dev-secret-change-this-in-render-env-vars',
     resave: false,
     saveUninitialized: false,

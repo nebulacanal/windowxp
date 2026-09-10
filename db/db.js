@@ -1,9 +1,11 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 
-// DB 파일은 프로젝트 루트의 data.sqlite 하나로 관리합니다.
-// 나중에 백업이 필요하면 이 파일 하나만 복사하면 됩니다.
-const db = new Database(path.join(__dirname, '..', 'data.sqlite'));
+// DB 파일 위치. DB_DIR 환경변수가 있으면 그쪽에 저장합니다.
+// 렌더(Render) 등에서 서버가 재시작되면 로컬 파일시스템 내용이 사라질 수 있으니,
+// Persistent Disk를 만들어서 그 마운트 경로를 DB_DIR로 지정하면 재시작해도 데이터가 유지됩니다.
+const DB_DIR = process.env.DB_DIR || path.join(__dirname, '..');
+const db = new Database(path.join(DB_DIR, 'data.sqlite'));
 
 db.pragma('journal_mode = WAL');
 

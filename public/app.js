@@ -29,6 +29,32 @@ function escapeHtml(str) {
   }[c]));
 }
 
+// 이미지 파일을 정사각형으로 잘라 리사이즈한 뒤 JPEG data URL로 변환 (서버에 그대로 저장)
+function resizeImageToDataUrl(file, maxSize, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('read-failed'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('image-failed'));
+      img.onload = () => {
+        const side = Math.min(img.width, img.height);
+        const sx = (img.width - side) / 2;
+        const sy = (img.height - side) / 2;
+        const size = Math.min(maxSize, side);
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 const TILE_HEIGHT_COLLAPSED = 64;
 const TILE_HEIGHT_LOGIN_EXPANDED = 112;
 
@@ -304,6 +330,25 @@ function renderHomeView() {
   document.getElementById('admin-link').classList.toggle('hidden', !currentUser.isAdmin);
 }
 
+const PREF_LABEL = { top: '탑', bottom: '바텀', butch: '부치', femme: '팸' };
+const CURRICULUM_LABEL = { gay: '게이', lesbian: '레즈비언' };
+
+// 성향 배지 + 커리큘럼 배지(들)를 각각 따로 렌더링
+function preferenceCurriculumBadgesHtml(preference, curriculumGay, curriculumLesbian) {
+  const badges = [];
+  if (PREF_LABEL[preference]) {
+    badges.push(`<span class="pref-badge pref-${escapeHtml(preference)}">${PREF_LABEL[preference]}</span>`);
+  }
+  if (curriculumGay) {
+    badges.push(`<span class="pref-badge curriculum-gay">게이</span>`);
+  }
+  if (curriculumLesbian) {
+    badges.push(`<span class="pref-badge curriculum-lesbian">레즈비언</span>`);
+  }
+  return `<span class="badge-group">${badges.join('')}</span>`;
+}
+let myComputerOpenDrive = null; // null | 'purchased' | 'received' | 'used'
+
 function pencilIconSvg() {
   return `<svg viewBox="0 0 16 16" fill="none" width="13" height="13">
     <path d="M11.4 1.4a1.4 1.4 0 0 1 2 0l1.2 1.2a1.4 1.4 0 0 1 0 2L5.4 13.8l-3.8 1 1-3.8L11.4 1.4Z" fill="#fff" stroke="#4C5F91" stroke-width="1.1" stroke-linejoin="round"/>
@@ -312,11 +357,31 @@ function pencilIconSvg() {
 }
 
 function driveIconSvg(color) {
-  return `<svg viewBox="0 0 32 22" width="26" height="18">
-    <rect x="1.5" y="5" width="21" height="12" rx="2.2" fill="#EDF1FA" stroke="#8A97B8" stroke-width="1.3"/>
-    <rect x="21" y="8" width="9" height="6" rx="1.3" fill="#D3DAE8" stroke="#8A97B8" stroke-width="1.1"/>
-    <circle cx="7" cy="11" r="2.1" fill="${color}"/>
+  return `<svg viewBox="0 0 62 32" width="46" height="24">
+    <path d="M52 6 L62 0 L62 26 L52 32 Z" fill="#C7CEDC" stroke="#8A97B8" stroke-width="1.2" stroke-linejoin="round"/>
+    <path d="M6 6 L52 6 L62 0 L16 0 Z" fill="#F6F8FC" stroke="#8A97B8" stroke-width="1.2" stroke-linejoin="round"/>
+    <rect x="6" y="6" width="46" height="26" rx="4" fill="#FDFEFF" stroke="#8A97B8" stroke-width="1.2"/>
+    <line x1="6" y1="19" x2="52" y2="19" stroke="#E1E6F0" stroke-width="1.1"/>
+    <circle cx="14" cy="12.5" r="1.8" fill="${color}"/>
   </svg>`;
+}
+
+function driveHeaderHtml(color, label, letter, count) {
+  const pct = Math.min(count / 10, 1) * 100;
+  return `
+    <div class="drive-header">
+      <div class="drive-icon-wrap">${driveIconSvg(color)}</div>
+      <div class="drive-header-text">
+        <div class="drive-header-label">${escapeHtml(label)} (${letter}:)</div>
+        <div class="drive-usage-bar-track"><div class="drive-usage-bar-fill" style="width:${pct}%; background:${color};"></div></div>
+        <div class="drive-header-sub">아이템 ${count}개 저장됨</div>
+      </div>
+    </div>`;
+}
+
+function chevronIconSvg(down) {
+  const d = down ? 'M2.5 4.5 L7 9 L11.5 4.5' : 'M4.5 2.5 L9 7 L4.5 11.5';
+  return `<svg viewBox="0 0 14 14" width="11" height="11" style="vertical-align:middle;"><path d="${d}" stroke="#4C5F91" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 }
 
 async function renderMyComputerView() {
@@ -347,106 +412,201 @@ async function renderMyComputerView() {
     const adSectionHtml =
       largeBannerHtml || smallRowHtml ? `<div class="ad-banner-wrap">${largeBannerHtml}${smallRowHtml}</div>` : '';
 
-    // ── 아이템 3종 목록 ─────────────────────────────────────────
-    const purchasedRowsHtml = inv.purchased.length
+    // ── 아이템 3종 (아이콘 그리드, 바탕화면 폴더 느낌) ─────────────────────────────────────────
+    function driveIconTile({ icon, name, title, onclickClass, dataAttrs }) {
+      const dataStr = dataAttrs ? Object.entries(dataAttrs).map(([k, v]) => `data-${k}="${v}"`).join(' ') : '';
+      return `
+        <div class="dgrid-tile ${onclickClass || ''}" title="${escapeHtml(title || name)}" ${dataStr}>
+          <div class="dgrid-icon">${icon}</div>
+          <div class="dgrid-name">${escapeHtml(name)}</div>
+        </div>`;
+    }
+
+    const purchasedGridHtml = inv.purchased.length
       ? inv.purchased
-          .map(
-            (p) => `
-            <div class="drive-item-row">
-              <span class="drive-item-type">${SHOP_TYPE_LABEL[p.type] || p.type}</span>
-              <span class="drive-item-name">${escapeHtml(p.itemName)}${p.recipientNickname ? ` → ${escapeHtml(p.recipientNickname)}` : ''}</span>
-              <span class="feed-card-time">${formatFeedTime(p.createdAt)}</span>
-            </div>`
+          .map((p) =>
+            driveIconTile({
+              icon: SHOP_TYPE_ICON[p.type] || '📄',
+              name: p.itemName,
+              title: `${SHOP_TYPE_LABEL[p.type] || p.type}${p.recipientNickname ? ` → ${p.recipientNickname}` : ''} · ${formatFeedTime(p.createdAt)}`,
+            })
           )
           .join('')
-      : '<p class="view-muted">아직 구매한 아이템이 없어요.</p>';
+      : '';
 
-    const receivedRowsHtml = inv.received.length
+    const receivedGridHtml = inv.received.length
       ? inv.received
           .map((r) => {
-            const senderLabel = r.revealed
-              ? escapeHtml(r.senderNickname)
-              : inv.magnifierCount > 0
-              ? `<button type="button" class="feed-unlock-btn mycomp-reveal-btn" data-target-id="${r.id}">🔍 공개</button>`
-              : '??? (돋보기 필요)';
-            const extra = r.type === 'anon_note' && r.message ? ` "${escapeHtml(r.message)}"` : '';
-            return `
-              <div class="drive-item-row">
-                <span class="drive-item-type">${SHOP_TYPE_LABEL[r.type] || r.type}</span>
-                <span class="drive-item-name">${escapeHtml(r.itemName)}${extra} · from ${senderLabel}</span>
-                <span class="feed-card-time">${formatFeedTime(r.createdAt)}</span>
-              </div>`;
+            if (!r.revealed) {
+              return driveIconTile({
+                icon: '🔒',
+                name: inv.magnifierCount > 0 ? '공개하기' : '???',
+                title: inv.magnifierCount > 0 ? '돋보기로 발신자 공개' : '돋보기가 필요해요',
+                onclickClass: inv.magnifierCount > 0 ? 'mycomp-reveal-btn' : '',
+                dataAttrs: inv.magnifierCount > 0 ? { 'target-id': r.id } : null,
+              });
+            }
+            return driveIconTile({
+              icon: SHOP_TYPE_ICON[r.type] || '📄',
+              name: r.itemName,
+              title: `from ${r.senderNickname} · ${formatFeedTime(r.createdAt)}${r.message ? ` · "${r.message}"` : ''}`,
+            });
           })
           .join('')
-      : '<p class="view-muted">아직 받은 아이템이 없어요.</p>';
+      : '';
 
-    const usedRowsHtml = inv.used.length
+    const usedGridHtml = inv.used.length
       ? inv.used
-          .map(
-            (u) => `
-            <div class="drive-item-row">
-              <span class="drive-item-type">${SHOP_TYPE_LABEL[u.type] || u.type}</span>
-              <span class="drive-item-name">${escapeHtml(u.itemName)}</span>
-              <span class="feed-card-time">${formatFeedTime(u.createdAt)}</span>
-            </div>`
+          .map((u) =>
+            driveIconTile({
+              icon: SHOP_TYPE_ICON[u.type] || '📄',
+              name: u.itemName,
+              title: `${SHOP_TYPE_LABEL[u.type] || u.type} · ${formatFeedTime(u.createdAt)}`,
+            })
           )
           .join('')
-      : '<p class="view-muted">아직 사용한 아이템이 없어요.</p>';
+      : '';
 
     const photoStyle = profile.profileImageUrl
       ? `background-image:url('${escapeHtml(profile.profileImageUrl)}'); background-size:cover; background-position:center;`
       : '';
+    const photoPlaceholder = profile.profileImageUrl ? '' : '?';
+
+    const driveDefs = {
+      purchased: { color: '#3B82ED', label: '구매한 아이템', letter: 'I', count: inv.purchased.length, gridHtml: purchasedGridHtml },
+      received: { color: '#3ED67A', label: '받은 아이템', letter: 'L', count: inv.received.length, gridHtml: receivedGridHtml },
+      used: { color: '#F4A93C', label: '사용 내역', letter: 'H', count: inv.used.length, gridHtml: usedGridHtml },
+    };
+
+    const driveAreaHtml = myComputerOpenDrive
+      ? (() => {
+          const d = driveDefs[myComputerOpenDrive];
+          return `
+            <div class="drive-big-box">
+              <div class="drive-breadcrumb" id="drive-back-btn">
+                &gt; <span class="drive-breadcrumb-link">장치 및 드라이브</span> &gt; ${d.label} (${d.letter}:)
+              </div>
+              <div class="drive-devices-rule"></div>
+              <div class="dgrid-wrap">
+                ${d.gridHtml || '<p class="view-muted dgrid-empty">(비어 있음)</p>'}
+              </div>
+            </div>`;
+        })()
+      : `
+        <div class="drive-big-box">
+          <div class="drive-devices-header" id="drive-devices-toggle">
+            ${chevronIconSvg(true)} 장치 및 드라이브 (3)
+          </div>
+          <div class="drive-devices-rule"></div>
+          <div class="drive-grid" id="drive-grid">
+            <div class="drive-tile" data-drive-id="purchased">${driveHeaderHtml(driveDefs.purchased.color, driveDefs.purchased.label, driveDefs.purchased.letter, driveDefs.purchased.count)}</div>
+            <div class="drive-tile" data-drive-id="received">${driveHeaderHtml(driveDefs.received.color, driveDefs.received.label, driveDefs.received.letter, driveDefs.received.count)}</div>
+            <div class="drive-tile" data-drive-id="used">${driveHeaderHtml(driveDefs.used.color, driveDefs.used.label, driveDefs.used.letter, driveDefs.used.count)}</div>
+          </div>
+        </div>`;
 
     winBody.innerHTML = `
       ${adSectionHtml}
 
       <div class="profile-card">
-        <div class="profile-photo-wrap">
-          <div class="profile-photo-box" style="${photoStyle}"></div>
+        <div class="profile-photo-wrap" id="profile-photo-click">
+          <div class="profile-photo-box" style="${photoStyle}">${photoPlaceholder}</div>
           <div class="profile-photo-edit-btn" id="profile-photo-edit-btn">${pencilIconSvg()}</div>
         </div>
         <div class="profile-card-info">
-          <div class="profile-card-nick">${escapeHtml(profile.nickname)}</div>
-          <div class="profile-card-intro-row">
-            <span class="profile-card-intro" id="profile-intro-display">${escapeHtml(profile.profile_note) || '<span class="view-muted">소개를 작성해보세요</span>'}</span>
-            <span class="profile-intro-edit-btn" id="profile-intro-edit-btn">${pencilIconSvg()}</span>
+          <div class="profile-card-nick-row">
+            <span class="profile-card-nick">${escapeHtml(profile.nickname)}</span>
+            ${preferenceCurriculumBadgesHtml(profile.preference, profile.curriculumGay, profile.curriculumLesbian)}
           </div>
-          <div class="profile-card-bottom-row">
-            <span class="profile-card-points">💰 ${profile.points}P</span>
-            <span class="pref-badge pref-top">${escapeHtml(profile.badge)}</span>
+          <div class="profile-card-boxes">
+            <div class="profile-card-box profile-points-box">
+              <div class="profile-card-points-main"><span class="profile-card-points-emoji">💰</span> ${profile.points}P</div>
+              <div class="profile-card-points-label">보유 포인트</div>
+            </div>
+            <div class="profile-card-box profile-intro-box">
+              <div class="profile-card-intro-row">
+                <span class="profile-card-intro" id="profile-intro-display">${escapeHtml(profile.profile_note) || '<span class="view-muted">소개를 작성해보세요</span>'}</span>
+                <span class="profile-intro-edit-btn" id="profile-intro-edit-btn">${pencilIconSvg()}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
+      <input type="file" id="profile-photo-file" accept="image/*" class="hidden" />
 
-      <div class="drive-section">
-        <div class="drive-section-title">${driveIconSvg('#3B82ED')} 구매한 아이템 (I:)</div>
-        <div class="drive-item-list">${purchasedRowsHtml}</div>
-      </div>
-      <div class="drive-section">
-        <div class="drive-section-title">${driveIconSvg('#3ED67A')} 받은 아이템 (L:)</div>
-        <div class="drive-item-list">${receivedRowsHtml}</div>
-      </div>
-      <div class="drive-section">
-        <div class="drive-section-title">${driveIconSvg('#F4A93C')} 사용 내역 (H:)</div>
-        <div class="drive-item-list">${usedRowsHtml}</div>
-      </div>
+      ${driveAreaHtml}
     `;
 
-    // 프로필 사진 수정
-    document.getElementById('profile-photo-edit-btn').addEventListener('click', async () => {
-      const url = prompt('프로필 사진 이미지 주소(URL)를 입력해 주세요:', profile.profileImageUrl || '');
-      if (url === null) return;
+    if (myComputerOpenDrive) {
+      document.getElementById('drive-back-btn').addEventListener('click', () => {
+        myComputerOpenDrive = null;
+        renderMyComputerView();
+      });
+      document.querySelectorAll('.mycomp-reveal-btn').forEach((btn) => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          btn.style.pointerEvents = 'none';
+          try {
+            const r = await fetch('/api/shop/reveal', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ targetPurchaseId: Number(btn.dataset.targetId) }),
+            });
+            const d = await r.json();
+            if (!r.ok) {
+              alert(d.error || '공개에 실패했어요.');
+              return;
+            }
+            renderMyComputerView();
+          } catch (err) {
+            alert('서버에 연결할 수 없어요.');
+          }
+        });
+      });
+    } else {
+      // 장치 및 드라이브 섹션 전체 접기/펼치기
+      document.getElementById('drive-devices-toggle').addEventListener('click', (e) => {
+        const grid = document.getElementById('drive-grid');
+        const willHide = !grid.classList.contains('hidden');
+        grid.classList.toggle('hidden', willHide);
+        e.currentTarget.querySelector('svg').outerHTML = chevronIconSvg(!willHide);
+      });
+
+      // 드라이브 타일 클릭 -> 폴더 열듯 그 안으로 들어가기
+      document.querySelectorAll('.drive-tile').forEach((tile) => {
+        tile.addEventListener('click', () => {
+          myComputerOpenDrive = tile.dataset.driveId;
+          renderMyComputerView();
+        });
+      });
+    }
+
+    // 프로필 사진 수정: 박스든 연필이든 누르면 파일 선택창이 뜨고, 리사이즈해서 업로드
+    const photoFileInput = document.getElementById('profile-photo-file');
+    const openPhotoPicker = () => photoFileInput.click();
+    document.getElementById('profile-photo-click').addEventListener('click', openPhotoPicker);
+    document.getElementById('profile-photo-edit-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      openPhotoPicker();
+    });
+
+    photoFileInput.addEventListener('change', async () => {
+      const file = photoFileInput.files[0];
+      if (!file) return;
       try {
+        const dataUrl = await resizeImageToDataUrl(file, 320, 0.85);
         const r = await fetch('/api/profile/me', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ profileImageUrl: url.trim() }),
+          body: JSON.stringify({ profileImageUrl: dataUrl }),
         });
         const d = await r.json();
         if (!r.ok) return alert(d.error || '저장에 실패했어요.');
         renderMyComputerView();
       } catch (err) {
-        alert('서버에 연결할 수 없어요.');
+        alert('사진을 처리하지 못했어요.');
+      } finally {
+        photoFileInput.value = '';
       }
     });
 
@@ -470,29 +630,6 @@ async function renderMyComputerView() {
           renderMyComputerView();
         } catch (err) {
           alert('서버에 연결할 수 없어요.');
-        }
-      });
-    });
-
-    document.querySelectorAll('.mycomp-reveal-btn').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        btn.disabled = true;
-        try {
-          const r = await fetch('/api/shop/reveal', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ targetPurchaseId: Number(btn.dataset.targetId) }),
-          });
-          const d = await r.json();
-          if (!r.ok) {
-            alert(d.error || '공개에 실패했어요.');
-            btn.disabled = false;
-            return;
-          }
-          renderMyComputerView();
-        } catch (err) {
-          alert('서버에 연결할 수 없어요.');
-          btn.disabled = false;
         }
       });
     });
@@ -520,7 +657,7 @@ async function renderMyDocumentsView() {
           <div class="member-row">
             <div class="member-info">
               <span class="member-nick">${escapeHtml(m.nickname)}</span>
-              <span class="pref-badge pref-${m.preference}">${escapeHtml(m.badge)}</span>
+              ${preferenceCurriculumBadgesHtml(m.preference, m.curriculumGay, m.curriculumLesbian)}
             </div>
             <div class="member-note">${escapeHtml(m.profileNote || '(자기소개 없음)')}</div>
             <button type="button" class="poke-btn" data-id="${m.id}" ${isSelf ? 'disabled' : ''}>
@@ -947,6 +1084,7 @@ async function renderFeedView() {
 }
 
 const SHOP_TYPE_LABEL = { gift: '선물', anon_note: '익명 쪽지', mp3: 'mp3', magnifier: '돋보기', pass: '열람권', coin: '동전', nameplate: '이름표', gacha: '뽑기' };
+const SHOP_TYPE_ICON = { gift: '🎁', anon_note: '✉️', mp3: '🎵', magnifier: '🔍', pass: '🎫', coin: '🪙', nameplate: '🏷️', gacha: '🎰' };
 
 function shopItemNeedsRecipient(type) {
   return type === 'gift' || type === 'anon_note' || type === 'mp3' || type === 'coin';
@@ -2878,7 +3016,7 @@ async function renderAdminSoribadaTab() {
 }
 
 function switchView(view, label) {
-  if (view === 'my-computer') renderMyComputerView();
+  if (view === 'my-computer') { myComputerOpenDrive = null; renderMyComputerView(); }
   else if (view === 'my-documents') renderMyDocumentsView();
   else if (view === 'memo') renderMemoView();
   else if (view === 'soribada') renderSoribadaView();

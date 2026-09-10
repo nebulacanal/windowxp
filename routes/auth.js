@@ -24,9 +24,11 @@ function validatePassword(password) {
   return null;
 }
 
+const PREFERENCE_VALUES = ['top', 'bottom', 'butch', 'femme'];
+
 function validatePreference(preference) {
-  if (preference !== 'top' && preference !== 'bottom') {
-    return '성향(탑부치/바텀팸)을 선택해 주세요.';
+  if (!PREFERENCE_VALUES.includes(preference)) {
+    return '성향(탑/부치/바텀/팸)을 선택해 주세요.';
   }
   return null;
 }

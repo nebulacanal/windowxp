@@ -51,8 +51,8 @@ router.put('/me', requireLogin, (req, res) => {
   }
 
   if (profileImageUrl !== undefined) {
-    if (typeof profileImageUrl !== 'string' || profileImageUrl.length > 1000) {
-      return res.status(400).json({ error: '이미지 주소가 올바르지 않아요.' });
+    if (typeof profileImageUrl !== 'string' || profileImageUrl.length > 2000000) {
+      return res.status(400).json({ error: '이미지 용량이 너무 크거나 형식이 올바르지 않아요.' });
     }
     db.prepare('UPDATE users SET profile_image_url = ? WHERE id = ?').run(profileImageUrl, req.session.userId);
   }
